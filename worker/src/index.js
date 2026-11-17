@@ -23,6 +23,7 @@ async function pbkdf2(password, salt) {
 }
 const rid = () => b64(crypto.getRandomValues(new Uint8Array(18))).replace(/[+/=]/g, '');
 const clean = (s, n) => String(s ?? '').replace(/[<>]/g, '').trim().slice(0, n);
+const KRU = { x: -6, z: 50.2 };   // ครูของขวัญ NPC (client DANCE + 2.2 z)
 const N_CHESTS = 12, FIND_BONUS = 20, PENALTY = 20, TIME_LIMIT = 30, OPEN_RANGE = 4.5, MAX_PLAYERS = 50;
 const SPAWN = { x: 0, z: 20 };
 
@@ -117,7 +118,7 @@ export class Room {
       if (Number.isInteger(m.look) && m.look >= 0 && m.look < 12) p.look = m.look;   // chosen character (even = girl, odd = boy)
       if (this.layout.length && !p.chests) this.newChests(p);
       me.sid = sid; me.role = 'student';
-      this.send(ws, { t: 'welcome', role: 'student', sid, phase: this.phase, me: { x: p.x, z: p.z, score: p.score, found: p.found }, chests: this.chestView(p), total: this.layout.length || N_CHESTS });
+      this.send(ws, { t: 'welcome', role: 'student', sid, phase: this.phase, me: { x: p.x, z: p.z, score: p.score, found: p.found, hint: !!p.hint }, chests: this.chestView(p), total: this.layout.length || N_CHESTS });
       this.dirtyRoster = true; await this.save(p); return;
     }
     if (!me.role) return;
@@ -128,6 +129,12 @@ export class Room {
         if (this.phase === 'paused') return;
         for (const k of ['x', 'y', 'z', 'ry', 's']) if (Number.isFinite(m[k])) p[k] = Math.max(-500, Math.min(500, m[k]));
         p.a = !!m.a; p.e = Math.max(0, Math.min(9, m.e | 0)); return;
+      }
+      if (m.t === 'hint') {   // ครูของขวัญ in the dance room gives each student one guide arrow per game
+        if (this.phase !== 'playing') return this.send(ws, { t: 'hint', ok: false, msg: 'รอครูเริ่มเกมก่อนนะจ๊ะ 😊' });
+        if (p.hint) return this.send(ws, { t: 'hint', ok: false, msg: 'ครูให้ลูกศรไปแล้วนะ คนละ 1 ครั้งจ้ะ 💪' });
+        if (Math.hypot(p.x - KRU.x, p.z - KRU.z) > 6) return;
+        p.hint = true; await this.save(p); return this.send(ws, { t: 'hint', ok: true });
       }
       if (m.t === 'open') {
         if (this.phase !== 'playing') return this.send(ws, { t: 'notice', msg: 'รอครูเริ่มเกมก่อนนะ' });
@@ -173,9 +180,9 @@ export class Room {
           this.layout = []; for (const s of shuffled) { if (this.layout.length >= N_CHESTS) break; if (this.layout.every((o) => Math.hypot(o.x - s.x, o.z - s.z) > 20)) this.layout.push(s); }
           await this.ctx.storage.put({ layout: this.layout, pool: this.pool });
         }
-        if (m.reset !== false) for (const p of this.players.values()) { p.score = 0; p.found = 0; p.right = 0; p.wrong = 0; this.newChests(p); await this.save(p); }
+        if (m.reset !== false) for (const p of this.players.values()) { p.score = 0; p.found = 0; p.right = 0; p.wrong = 0; p.hint = false; this.newChests(p); await this.save(p); }
         await this.setPhase('playing');
-        for (const [ws2, mm] of this.sockets) if (mm.role === 'student') { const p = this.players.get(mm.sid); this.send(ws2, { t: 'chests', chests: this.chestView(p), total: this.layout.length, score: p.score, found: p.found }); }
+        for (const [ws2, mm] of this.sockets) if (mm.role === 'student') { const p = this.players.get(mm.sid); this.send(ws2, { t: 'chests', chests: this.chestView(p), total: this.layout.length, score: p.score, found: p.found, hint: !!p.hint }); }
         this.all({ t: 'broadcast', text: '🎉 เริ่มเกมแล้ว! ใช้ไม้กายสิทธิ์ตามหาหีบสมบัติโขน' });
       } else if (m.c === 'pause') { await this.setPhase('paused'); this.all({ t: 'broadcast', text: '⏸ ครูหยุดเกมชั่วคราว' }); }
       else if (m.c === 'resume') { await this.setPhase('playing'); this.all({ t: 'broadcast', text: '▶ เล่นต่อได้แล้ว!' }); }

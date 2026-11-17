@@ -33,6 +33,7 @@ T.send({ t: 'show', on: true }); await sleep(300);
 
 // start with a spot pool -> each student gets 12 chests
 const spots = Array.from({ length: 48 }, (_, i) => [(i % 8) * 25 - 90, Math.floor(i / 8) * 25 - 70]);
+A.send({ t: 'hint' }); assert.equal((await A.wait('hint')).ok, false, 'no guide arrow before START');
 T.send({ t: 'cmd', c: 'start', spots });
 assert.equal((await A.wait('countdown')).kind, 'start', '3-2-1 countdown first');
 assert.equal((await A.wait('phase', 6000)).phase, 'playing');
@@ -57,6 +58,10 @@ B.inbox.length = 0; A.inbox.length = 0; T.send({ t: 'cmd', c: 'pause' }); assert
 B.send({ t: 'pos', x: 99, y: 0, z: 99, ry: 0, s: 0, a: 0 }); await sleep(300);
 T.send({ t: 'cmd', c: 'summon' }); const sm = await B.wait('summon'); assert.ok(Math.hypot(sm.x, sm.z - 20) < 7, 'summoned to plaza');
 A.inbox.length = 0; B.inbox.length = 0; T.send({ t: 'cmd', c: 'broadcast', text: 'สวัสดีนักเรียน' }); assert.equal((await A.wait('broadcast')).text.length > 0 && (await B.wait('broadcast')).text, 'สวัสดีนักเรียน');
+T.send({ t: 'cmd', c: 'resume' }); await sleep(200);
+A.send({ t: 'pos', x: -6, y: 0.45, z: 49, ry: 0, s: 0 }); await sleep(100);
+A.send({ t: 'hint' }); assert.equal((await A.wait('hint')).ok, true, 'Kru Khongkhwan gives a guide arrow');
+A.send({ t: 'hint' }); assert.equal((await A.wait('hint')).ok, false, 'only once per student');
 T.send({ t: 'cmd', c: 'end' }); assert.equal((await A.wait('countdown')).kind, 'end'); const lb = await A.wait('leaderboard', 6000); assert.ok(lb.rows.length >= 2, 'leaderboard');
 const roster = await T.wait('roster'); assert.ok(roster.list.length >= 2, 'teacher roster');
 

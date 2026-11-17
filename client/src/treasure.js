@@ -3,14 +3,16 @@
 // Online: the server owns chest positions, questions, answers and scores. Offline: same rules, run locally.
 import * as THREE from 'three';
 import { me, game, scene, controls, toast, beep, audio } from './main.js';
-import { colliders, isBlockedWater, CITY, SPAWN, riverX, groundHeight, pathClear, rng, animated } from './world.js';
-import { prop } from './models.js';
+import { colliders, isBlockedWater, CITY, SPAWN, riverX, groundHeight, pathClear, rng, animated, DANCE } from './world.js';
+import { prop, makeCharacter } from './models.js';
+import { makeNameTag } from './character.js';
+import { SEAT } from './elephant.js';
 import { net } from './net.js';
 import { showCertificate } from './cert.js';
 
 const $ = (id) => document.getElementById(id);
 const N_CHESTS = 12, OPEN_DIST = 2.4, FIND_BONUS = 20;
-const st = { chests: [], score: 0, found: 0, total: N_CHESTS, bank: [], used: new Set(), muted: false, nextBeep: 0, blinkT: 0, busy: false, online: false, secs: 0, certShown: false };
+const st = { chests: [], score: 0, found: 0, total: N_CHESTS, bank: [], used: new Set(), muted: false, nextBeep: 0, blinkT: 0, busy: false, online: false, secs: 0, certShown: false, hintUsed: false, hintChest: -1 };
 
 const hash = (s) => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7);
 const blocked = (x, z, pad) => colliders.some((c) => (c.r !== undefined ? Math.hypot(x - c.x, z - c.z) < c.r + pad : Math.abs(x - c.x) < c.hw + pad && Math.abs(z - c.z) < c.hd + pad));
@@ -174,6 +176,43 @@ function finish(c, right) {
   }
   if (st.found >= st.total) { toast(`🎉 พบสมบัติครบ ${st.total} หีบ! คะแนนรวม ${st.score}`, 6000); if (!st.online) certificate(); }
 }
+// ---------- ครูของขวัญ: one guide arrow per student per game ----------
+const KRU = { x: DANCE.x, z: DANCE.z + 2.2 }, KRU_DIST = 2.8;
+const KRU_LOOK = { base: 'Rogue', hide: /Cape/, recolor: { '1,0': '#2a1a10', '0,1': '#d9548e', '1,1': '#d9548e', '5,2': '#d9548e', '5,0': '#d9548e', '6,0': '#e9b73c', '3,0': '#e9b73c', '3,2': '#6a2c7a' } };
+let guide = null;
+function spawnKru() {
+  const ch = makeCharacter(KRU_LOOK);
+  ch.root.position.set(KRU.x, 0.47, KRU.z); ch.root.rotation.y = Math.PI;   // dance floor top, facing the entrance
+  ch.root.add(makeNameTag('👩‍🏫 ครูของขวัญ', 'คุยเพื่อรับลูกศรนำทาง', '#ffe08a'));
+  scene.add(ch.root); animated.push((t, dt) => ch.update(dt)); colliders.push({ x: KRU.x, z: KRU.z, r: 0.5 });
+  // flat arrow lying almost level, so it reads from the usual camera angle (behind + above the player)
+  const sh = new THREE.Shape([[-0.18, -0.55], [0.18, -0.55], [0.18, 0.05], [0.45, 0.05], [0, 0.6], [-0.45, 0.05], [-0.18, 0.05]].map(([x, y]) => new THREE.Vector2(x, y)));
+  const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.12, bevelEnabled: false }); geo.rotateX(-Math.PI / 2); geo.rotateY(Math.PI);   // shape tip (+y) -> world +z
+  const g = new THREE.Group(), arrow = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#ffd23f' }));
+  const edge = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#5a2e0a', side: THREE.BackSide })); edge.scale.setScalar(1.12);
+  arrow.rotation.x = edge.rotation.x = 0.25; g.add(edge, arrow); g.scale.setScalar(1.3); g.visible = false; scene.add(g); guide = g;
+}
+const nearKru = () => Math.hypot(me.x - KRU.x, me.z - KRU.z) < KRU_DIST;
+function giveArrow() {
+  const n = nearest(); if (!n) return;
+  st.hintUsed = true; st.hintChest = n.i;
+  [1047, 1319, 1568, 2093].forEach((f, i) => tone(f, i * 0.08, 0.3, 0.06, 'triangle'));
+  toast('👩‍🏫 ครูของขวัญ: ตามลูกศรบนหัวไปนะจ๊ะ ✨ (หายเมื่อเจอหีบนั้น)', 4500);
+}
+function talkKru() {
+  if (!playing()) return toast('👩‍🏫 ครูของขวัญ: รอครูเริ่มเกมก่อนนะจ๊ะ 😊', 2500);
+  if (st.hintUsed) return toast('👩‍🏫 ครูของขวัญ: ครูให้ลูกศรไปแล้วนะ คนละ 1 ครั้งจ้ะ 💪', 2500);
+  if (st.online) net.send({ t: 'hint' }); else giveArrow();
+}
+function updateGuide(t) {
+  if (!guide) return;
+  const c = st.chests[st.hintChest];
+  if (st.hintChest >= 0 && (!c || c.found || !playing())) { if (c?.found) toast('ลูกศรนำทางหมดแล้ว เก่งมาก! 🎉', 2000); st.hintChest = -1; }
+  guide.visible = st.hintChest >= 0;
+  if (!guide.visible) return;
+  guide.position.set(me.x, me.y + 3.0 + (me.ride >= 0 ? SEAT : 0) + Math.sin(t * 4) * 0.1, me.z);
+  guide.rotation.y = Math.atan2(c.x - me.x, c.z - me.z);
+}
 function certificate() {
   if (st.certShown || st.gated) return; st.certShown = true;   // teacher plays for fun: no certificate
   showCertificate({ name: me.name, no: me.no, cls: me.cls, score: st.score, found: st.found, total: st.total, secs: st.secs });
@@ -184,11 +223,12 @@ function updateHud() { $('hud-score').textContent = st.score; $('hud-chests').te
 export async function startTreasureHunt({ online, seed = 'OFFLINE', gated = false }) {
   st.online = online; st.gated = gated;
   if (online) {
-    net.on('welcome', (m) => { if (m.chests) setChests(m.chests); if (m.me) { st.score = m.me.score; st.found = m.me.found; } st.total = m.total; updateHud(); });
+    net.on('welcome', (m) => { if (m.chests) setChests(m.chests); if (m.me) { st.score = m.me.score; st.found = m.me.found; st.hintUsed = !!m.me.hint; } st.total = m.total; updateHud(); });
     if (net.welcome?.chests) setChests(net.welcome.chests);
-    if (net.welcome?.me) { st.score = net.welcome.me.score; st.found = net.welcome.me.found; st.total = net.welcome.total; }
+    if (net.welcome?.me) { st.score = net.welcome.me.score; st.found = net.welcome.me.found; st.hintUsed = !!net.welcome.me.hint; st.total = net.welcome.total; }
     net.on('phase', (m) => { if (m.phase === 'ended') setTimeout(certificate, 1500); else if (m.phase === 'playing') st.certShown = false; });
-    net.on('chests', (m) => { setChests(m.chests); st.score = m.score; st.found = m.found; updateHud(); });
+    net.on('chests', (m) => { setChests(m.chests); st.score = m.score; st.found = m.found; st.hintUsed = !!m.hint; if (!m.hint) st.hintChest = -1; updateHud(); });
+    net.on('hint', (m) => (m.ok ? giveArrow() : toast('👩‍🏫 ครูของขวัญ: ' + m.msg, 2500)));
     net.on('question', (m) => {
       const c = st.chests[m.chest];
       setTimeout(() => showQuiz(m, (sel) => {
@@ -210,15 +250,18 @@ export async function startTreasureHunt({ online, seed = 'OFFLINE', gated = fals
   }
   animated.push((t, dt) => { if (playing() && net.phase !== 'paused') st.secs += dt; });   // time spent hunting (pauses not counted)
   animated.push((t, dt) => st.chests.forEach((c) => { if (c.lid) c.lid.rotation.x += (c.lidT - c.lid.rotation.x) * Math.min(1, dt * 7); }));
-  updateHud(); attachWand();
+  updateHud(); attachWand(); spawnKru();
   window.__hunt = st;
   $('detector').onclick = () => { st.muted = !st.muted; toast(st.muted ? '🔇 ปิดเสียงไม้กายสิทธิ์' : '🔊 เปิดเสียงไม้กายสิทธิ์', 1200); };
   $('detector').style.pointerEvents = 'auto';
-  game.onAct = () => { if (st.busy) return; const n = nearest(); if (n && n.d < OPEN_DIST) openChest(n); };
+  game.onAct = () => { if (st.busy) return; const n = nearest(); if (n && n.d < OPEN_DIST) openChest(n); else if (nearKru()) talkKru(); };
   game.onTick = (dt, t) => {
     attachWand(); detector(dt, t);
     st.chests.forEach((c) => (c.g.visible = playing() || c.found));
     const n = nearest();
-    $('prompt').classList.toggle('hidden', !(n && n.d < OPEN_DIST) || st.busy);
+    const atChest = n && n.d < OPEN_DIST, atKru = !atChest && nearKru();
+    $('prompt-what').textContent = atChest ? 'เปิดหีบ' : 'คุยกับครูของขวัญ';
+    $('prompt').classList.toggle('hidden', !(atChest || atKru) || st.busy);
+    updateGuide(t);
   };
 }
