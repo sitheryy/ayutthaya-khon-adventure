@@ -245,10 +245,11 @@ function chedi(B, x, z, s = 1, color = C.white, ruined = false) {
   boxC(x, z, 3.5 * s, 3.5 * s);
 }
 function buddha(B, x, z, ry = 0, s = 1) {   // brick base + scanned Thai Buddha (Sketchfab, laurashea, CC-BY)
-  const f = frame(B, x, z, ry);
-  f(BOX(6 * s, 1.6 * s, 5 * s), C.brick, 0, 0.8 * s, 0);
-  f(CYL(2.6 * s, 2.8 * s, 0.5 * s, 12), C.cream, 0, 1.85 * s, 0);
-  MODELS.push({ name: 'thai_buddha', x, z, ry: ry + BUDDHA_FACE, sc: 1.05 * s, y: 2.1 * s });
+  const f = frame(B, x, z, ry), g = groundHeight(x, z), top = 1.6 * s;   // everything follows the terrain; base sunk 1.5 m so it never floats
+  f(BOX(6 * s, top + 1.5, 5 * s), C.brick, 0, g + (top - 1.5) / 2, 0);
+  f(CYL(2.6 * s, 2.8 * s, 0.5 * s, 12), C.cream, 0, g + top + 0.25 * s, 0);
+  // scan sits ~6° tilted back: rx/rz straighten it (found by minimising its bounding box), y puts its foot on the cream disc
+  MODELS.push({ name: 'thai_buddha', x, z, ry: ry + BUDDHA_FACE, sc: 1.05 * s, y: g + 2.1 * s - 0.12 * 1.05 * s, rx: 6 * Math.PI / 180, rz: -2 * Math.PI / 180 });
   const rt = Math.abs(Math.sin(ry)) > 0.5; boxC(x, z, (rt ? 2.5 : 3) * s, (rt ? 3 : 2.5) * s);
 }
 function brickWall(B, x0, z0, x1, z1, h, r, gaps = []) {
@@ -1001,7 +1002,7 @@ export function buildWorld(scene, { low = false } = {}) {
   buildBoats(scene);
   buildScatter(scene, r);
   B.build(scene);
-  for (const m of MODELS) { const o = prop(m.name); if (!o) continue; o.traverse((c) => { if (c.isMesh) c.material.side = THREE.DoubleSide; }); o.position.set(m.x, m.y ?? groundHeight(m.x, m.z), m.z); o.rotation.y = m.ry; o.scale.setScalar(m.sc); scene.add(o); }
+  for (const m of MODELS) { const o = prop(m.name); if (!o) continue; o.traverse((c) => { if (c.isMesh) c.material.side = THREE.DoubleSide; }); o.position.set(m.x, m.y ?? groundHeight(m.x, m.z), m.z); o.rotation.order = 'YZX'; o.rotation.set(m.rx || 0, m.ry, m.rz || 0); o.scale.setScalar(m.sc); scene.add(o); }
   const npcs = [
     [ZONES[1].x - 4, ZONES[1].z + 44, 0, 'guard'], [ZONES[1].x + 4, ZONES[1].z + 44, 0, 'guard'], [ZONES[1].x - 6, ZONES[1].z + 1, 0, 'guard'], [ZONES[1].x + 6, ZONES[1].z + 1, 0, 'guard'],
     [ZONES[5].x - 8, WALL_Z - 6, Math.PI, 'guard'], [ZONES[5].x + 8, WALL_Z - 6, Math.PI, 'guard'],
