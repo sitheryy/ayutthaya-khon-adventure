@@ -207,6 +207,17 @@ const C = {
   stone: '#c9bfa6', stoneD: '#9c937e', rock: '#8f8577', path: '#e8c896', plaza: '#f1d6aa',
 };
 
+// real walkable steps: n solid boxes rising toward the building (local -z), each also a PLATFORM so players climb them
+function stairs(f, x, z, ry, w, rise, n, z0, run, color) {
+  const rot = Math.abs(Math.sin(ry)) > 0.5;
+  for (let i = 0; i < n; i++) {
+    const top = (i + 1) * rise / n, depth = run - i * run / n + 0.3, lz = z0 - i * run / n - depth / 2;
+    f(BOX(w, top, depth), i % 2 ? color : C.brickL, 0, top / 2, lz);
+    const [px, pz] = wpos(x, z, ry, 0, lz);
+    PLATFORMS.push({ x: px, z: pz, hw: (rot ? depth : w) / 2, hd: (rot ? w : depth) / 2, h: top });
+  }
+  [-1, 1].forEach((sd) => f(BOX(0.35, rise + 0.3, run), C.white, sd * (w / 2 + 0.17), (rise + 0.3) / 2, z0 - run / 2));   // side balustrades
+}
 // ================= structures =================
 function prang(B, x, z, s = 1, color = C.brick) {
   const f = frame(B, x, z);
@@ -216,8 +227,8 @@ function prang(B, x, z, s = 1, color = C.brick) {
   [2.5, 5, 8, 11, 14].forEach((y, i) => { const r = prof[i + 1][0] * s + 0.15 * s; f(CYL(r, r, 0.45 * s, 8), C.brickL, 0, (6 + y) * s, 0); });
   f(CYL(0.12 * s, 0.25 * s, 4 * s, 6), C.stoneD, 0, 27 * s, 0);
   f(BOX(2.2 * s, 3.2 * s, 1 * s), '#4a2a1a', 0, 7.6 * s, 4.2 * s);           // niche
-  f(BOX(4 * s, 0.6 * s, 6 * s), C.brickL, 0, 1.6 * s, 9 * s, { rx: -0.6 });     // front stair
-  boxC(x, z, 8 * s, 8 * s); boxC(x, z + 9 * s, 2.2 * s, 3 * s); // square stepped base + front stair
+  stairs(f, x, z, 0, 4 * s, 2 * s, 7, 11.5 * s, 3.5 * s, C.brick2);              // front stair onto the first terrace
+  PLATFORMS.push({ x, z, hw: 8 * s, hd: 8 * s, h: 2 * s }); boxC(x, z, 6.5 * s, 6.5 * s);   // walkable terrace, upper tiers solid
 }
 function chedi(B, x, z, s = 1, color = C.white, ruined = false) {
   const f = frame(B, x, z);
@@ -259,7 +270,7 @@ function thaiHall(B, x, z, w, d, o = {}) {
   const ry = o.ry || 0, f = frame(B, x, z, ry), wall = o.wall || C.white, roof = o.roof || C.roofR, trim = o.trim || C.roofG;
   const base = o.base ?? 1.4, wh = o.wh ?? 5;
   f(BOX(w + 4, base, d + 4), C.white, 0, base / 2, 0);
-  f(BOX(6, base, 3), C.cream, 0, base / 2 - 0.3, d / 2 + 3.2, { rx: -0.35 });
+  stairs(f, x, z, ry, 6, base, 5, d / 2 + 2 + 2.8, 2.8, C.cream);
   f(BOX(w, wh, d), wall, 0, base + wh / 2, 0);
   for (let i = 0; i <= 5; i++) { const lx = -w / 2 - 0.9 + (w + 1.8) * i / 5; [-1, 1].forEach((sd) => f(CYL(0.32, 0.36, wh, 8), C.white, lx, base + wh / 2, sd * (d / 2 + 0.9))); }
   f(BOX(2.6, 3.6, 0.3), C.gold, 0, base + 1.8, d / 2 + 0.05);
@@ -280,8 +291,10 @@ function thaiHall(B, x, z, w, d, o = {}) {
     [3.6, 2.8, 2.1, 1.5].forEach((bw, i) => f(BOX(bw, 1, bw), i % 2 ? C.gold : C.white, 0, ys + i, 0));
     f(CONE(0.9, 7, 8), C.gold, 0, ys + 7.5, 0);
   }
-  const [cx, cz] = [x, z]; const rot = Math.abs(Math.sin(ry)) > 0.5;
-  boxC(cx, cz, (rot ? d + 4 : w + 4) / 2, (rot ? w + 4 : d + 4) / 2);
+  const rot = Math.abs(Math.sin(ry)) > 0.5;
+  PLATFORMS.push({ x, z, hw: (rot ? d + 4 : w + 4) / 2, hd: (rot ? w + 4 : d + 4) / 2, h: base });   // porch around the hall
+  boxC(x, z, (rot ? d : w) / 2, (rot ? w : d) / 2);                                                  // hall walls
+  for (let i = 0; i <= 5; i++) { const lx = -w / 2 - 0.9 + (w + 1.8) * i / 5; [-1, 1].forEach((sd) => circ(...wpos(x, z, ry, lx, sd * (d / 2 + 0.9)), 0.4)); }
 }
 function salaPavilion(B, x, z, ry = 0, roof = C.roofO) {
   const f = frame(B, x, z, ry);
