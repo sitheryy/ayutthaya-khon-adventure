@@ -51,7 +51,14 @@ export class Controls {
     let tid = null;
     const find = (list) => [...list].find((t) => t.identifier === tid);
     pad.addEventListener('touchstart', (e) => { if (tid !== null) return; const t = e.changedTouches[0]; tid = t.identifier; setJoy(t); e.preventDefault(); }, { passive: false });
-    addEventListener('touchmove', (e) => { const t = tid !== null && find(e.changedTouches); if (t) { setJoy(t); e.preventDefault(); } }, { passive: false });
+    const inPad = (t) => { const r = pad.getBoundingClientRect(), m = 40; return t.clientX > r.left - m && t.clientX < r.right + m && t.clientY > r.top - m && t.clientY < r.bottom + m; };
+    addEventListener('touchmove', (e) => {
+      if (e.touches.length > 1) e.preventDefault();          // iOS: two fingers (stick + jump) must never become a pinch-zoom
+      let t = tid !== null && find(e.changedTouches);
+      if (!t && tid === null) { t = [...e.changedTouches].find(inPad); if (t) tid = t.identifier; }   // iOS cancelled the stick: re-grab the finger still on it
+      if (t) { setJoy(t); e.preventDefault(); }
+    }, { passive: false });
+    ['gesturestart', 'gesturechange'].forEach((n) => document.addEventListener(n, (e) => e.preventDefault()));
     const tend = (e) => { if (tid !== null && find(e.changedTouches)) { tid = null; this.joy.x = this.joy.y = 0; knob.style.transform = ''; } };
     addEventListener('touchend', tend); addEventListener('touchcancel', tend);
     const jb = document.getElementById('btn-jump'); jb.addEventListener('pointerdown', (e) => { e.preventDefault(); this.jumpQueued = true; }); jb.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
