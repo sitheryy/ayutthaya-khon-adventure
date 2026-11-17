@@ -30,8 +30,8 @@ export function updateAmbience(ctx, me, muted) {
   const water = Math.max(near(Math.hypot(me.x - FALL.x, me.z - FALL.z), 6, 40),
     0.55 * near(Math.abs(me.x - riverX(me.z)), 4, 30), 0.35 * Math.max(0, ...waters.map((w) => near(Math.hypot(me.x - w.x, me.z - w.z) - w.r, 0, 14))));
   const want = {
-    birds: 0.35 + 0.5 * forest,                         // everywhere, a lot more in the forest
-    night: 0.25 + 0.45 * Math.max(forest, rice),        // evening: crickets and frogs, loud by the paddies
+    birds: 0.12 + 0.2 * forest,                         // everywhere, a lot more in the forest
+    night: 0.08 + 0.17 * Math.max(forest, rice),        // evening: crickets and frogs, loud by the paddies
     water: water * 0.95,
     wind: 0.22 + 0.1 * Math.min(1, me.y / 6),           // a little stronger up on terraces
   };
