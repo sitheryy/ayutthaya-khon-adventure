@@ -151,3 +151,21 @@ body.touch #prompt, body.touch #prompt-ride { font-size: 22px; padding: 14px 30p
 .cert-box img { width: 100%; max-height: calc(100vh - 130px); object-fit: contain; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,.6); -webkit-touch-callout: default; user-select: auto; -webkit-user-select: auto; }
 .cert-btns { display: flex; gap: 10px; width: min(480px, 100%); } .cert-btns .btn-gold { margin: 0; text-align: center; text-decoration: none; display: block; }
 .cert-tip { color: #fbe7c2; font-size: 13px; }
+
+/* ---- phones (landscape, short screens): small HUD so the game stays visible ---- */
+html, body { background: #2a1a0e; }
+@media (max-height: 520px) {
+  .pill { font-size: 12px; padding: 1px 9px; margin-bottom: 2px; } .pill.score { font-size: 14px; } .pill.small { font-size: 11px; }
+  #hud-tl { top: calc(6px + env(safe-area-inset-top)); gap: 2px; }
+  #minimap-wrap { width: 88px; height: 88px; top: calc(6px + env(safe-area-inset-top)); border-width: 3px; }
+  #btn-fs { top: calc(100px + env(safe-area-inset-top)); font-size: 12px; padding: 3px 8px; }
+  #zone-banner { right: calc(108px + env(safe-area-inset-right)); top: 8px; padding: 4px 10px; } #zone-name { font-size: 14px; } #zone-sub { display: none; }
+  body.touch #detector { bottom: calc(10px + env(safe-area-inset-bottom)); padding: 3px 12px 3px 6px; gap: 6px; } #det-gem { width: 22px; height: 22px; } #det-text { font-size: 12px; min-width: 80px; }
+  body.touch #prompt, body.touch #prompt-ride { bottom: 62px; font-size: 16px; padding: 8px 20px; }
+  #tpanel { top: calc(124px + env(safe-area-inset-top)); width: min(300px, 55vw); max-height: calc(100vh - 134px); font-size: 12px; padding: 6px 8px; }
+  .tb { padding: 5px; font-size: 12px; } .tp-head { font-size: 14px; margin-bottom: 4px; } .tp-btns, .tp-row { gap: 4px; margin-bottom: 4px; }
+  .quiz-card { max-height: 97vh; padding: 8px 12px; } .quiz-head { font-size: 14px; margin-bottom: 2px; } #quiz-q { font-size: 15px; margin-bottom: 6px; }
+  #quiz-opts { grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 4px; } #quiz-opts button { font-size: 13px; padding: 6px 8px; } #quiz-timer { margin: 2px 0 6px; } #quiz-res { margin-top: 4px; font-size: 13px; }
+  #toast { top: 10%; font-size: 14px; padding: 6px 12px; }
+  #cert { padding: 4px; } .cert-box img { max-height: calc(100vh - 70px); } .cert-tip { display: none; }
+}

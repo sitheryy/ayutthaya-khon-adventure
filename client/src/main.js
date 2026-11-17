@@ -271,7 +271,7 @@ function footsteps(dt) {
 
 // ---------- loop ----------
 function resize() {
-  const w = innerWidth, h = innerHeight;
+  const vv = window.visualViewport, w = Math.round(vv?.width || innerWidth), h = Math.round(vv?.height || innerHeight);   // visualViewport: no gap under the iOS bars
   renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
   renderer.getDrawingBufferSize(STYLE.uRes.value);
   composer?.setSize(w, h); tilt?.setSize(STYLE.uRes.value.x, STYLE.uRes.value.y);
@@ -305,6 +305,8 @@ function frame() {
 }
 drawMapBase();
 requestAnimationFrame(frame);
+// already running as an installed app (home-screen icon) = already full screen: no button needed
+if (navigator.standalone || matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches) $('btn-fs').classList.add('hidden');
 $('btn-fs').onclick = async () => {
   const d = document, el = d.documentElement, isFs = d.fullscreenElement || d.webkitFullscreenElement;
   try {
