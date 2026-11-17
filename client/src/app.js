@@ -5,14 +5,15 @@ import { connect, net, netTick, teacherLogin, SERVER } from './net.js';
 const $ = (id) => document.getElementById(id);
 const form = $('form-login'), tform = $('form-teacher');
 let saved = null; try { saved = JSON.parse(localStorage.getItem('khon-profile') || 'null'); } catch {}
-if (saved) for (const k of ['name', 'no', 'cls']) form[k].value = saved[k] || '';
+if (saved) { for (const k of ['name', 'no', 'cls']) form[k].value = saved[k] || ''; if (saved.sex) form.sex.value = saved.sex; }
 
 function hookNet() { const prev = game.onTickNet; game.onTickNet = (dt) => { prev?.(dt); netTick(dt); }; $('net-badge').classList.remove('hidden'); }
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const p = { name: form.name.value.trim(), no: form.no.value.trim(), cls: form.cls.value.trim() };
-  try { localStorage.setItem('khon-profile', JSON.stringify(p)); } catch {}
+  const p = { name: form.name.value.trim(), no: form.no.value.trim(), cls: form.cls.value.trim() }, sex = form.sex.value;
+  try { localStorage.setItem('khon-profile', JSON.stringify({ ...p, sex })); } catch {}
+  p.look = ([...p.name].reduce((a, ch) => a + ch.charCodeAt(0), 0) % 6) * 2 + (sex === 'm' ? 1 : 0);   // studentLook: even = girl, odd = boy
   const btn = form.querySelector('button'); btn.disabled = true; btn.textContent = 'กำลังเชื่อมต่อ...';
   const online = await connect({ role: 'student', ...p });
   startPlaying(p);

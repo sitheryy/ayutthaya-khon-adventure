@@ -816,7 +816,7 @@ export function buildSky(scene) {
   animated.push(() => sky.position.copy(scene.userData.camPos || sky.position));
   return sky;
 }
-function instanceProp(scene, name, list, size, tint = 1) {
+function instanceProp(scene, name, list, size, tint = 1, sway = false) {
   const parts = propParts(name); if (!parts.length || !list.length) return;
   const bb = new THREE.Box3();
   parts.forEach((p) => { p.geo.computeBoundingBox(); bb.union(p.geo.boundingBox); });
@@ -824,6 +824,17 @@ function instanceProp(scene, name, list, size, tint = 1) {
   for (const { geo, mat } of parts) {
     geo.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2); geo.scale(k, k, k);
     mat.color.multiplyScalar(tint);
+    if (sway) {   // wind: tips bend more than the base, each clump on its own phase (like the grass)
+      mat.onBeforeCompile = (sh) => {
+        sh.uniforms.uTime = uTime;
+        sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+          vec3 ip = instanceMatrix[3].xyz; float k = position.y * position.y * 0.22;
+          float gust = 0.6 + 0.4 * sin(uTime * 0.45 + ip.x * 0.03);
+          transformed.x += sin(uTime * 2.1 + ip.x * 0.35 + ip.z * 0.2) * k * gust;
+          transformed.z += cos(uTime * 1.6 + ip.x * 0.25 + ip.z * 0.31) * k * 0.6 * gust;`);
+      };
+      mat.customProgramCacheKey = () => 'rice-sway';
+    }
     const im = new THREE.InstancedMesh(geo, mat, list.length);
     list.forEach(([x, y, z, ry, s], i) => { d.position.set(x, y, z); d.rotation.set(0, ry, 0); d.scale.setScalar(s); d.updateMatrix(); im.setMatrixAt(i, d.matrix); });
     im.castShadow = true; im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im);
@@ -932,7 +943,7 @@ function buildRice(scene, r, low) {
   }
   // Quaternius Rice clumps (CC0), two variants
   const clumps = pts.filter((_, i) => i % 2 === 0).map(([x, z]) => [x, 0, z, r() * 6, 0.85 + r() * 0.35]);
-  ['Rice_3', 'Rice_4'].forEach((n, k) => instanceProp(scene, n, clumps.filter((_, i) => i % 2 === k), 1.0, 1.05));
+  ['Rice_3', 'Rice_4'].forEach((n, k) => instanceProp(scene, n, clumps.filter((_, i) => i % 2 === k), 1.0, 1.05, true));
   const B = new Builder();
   for (const f of RICE) {
     for (let x = f.x0; x <= f.x1; x += 8) B.put(BOX(0.7, 0.35, f.z1 - f.z0), '#8a6a42', x, 0.15, (f.z0 + f.z1) / 2);

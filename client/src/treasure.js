@@ -4,12 +4,13 @@
 import * as THREE from 'three';
 import { me, game, scene, controls, toast, beep, audio } from './main.js';
 import { colliders, isBlockedWater, CITY, SPAWN, riverX, groundHeight, pathClear, rng, animated } from './world.js';
-import { makeAnimal } from './models.js';
+import { prop } from './models.js';
 import { net } from './net.js';
+import { showCertificate } from './cert.js';
 
 const $ = (id) => document.getElementById(id);
 const N_CHESTS = 12, OPEN_DIST = 2.4, FIND_BONUS = 20;
-const st = { chests: [], score: 0, found: 0, total: N_CHESTS, bank: [], used: new Set(), muted: false, nextBeep: 0, blinkT: 0, busy: false, online: false };
+const st = { chests: [], score: 0, found: 0, total: N_CHESTS, bank: [], used: new Set(), muted: false, nextBeep: 0, blinkT: 0, busy: false, online: false, secs: 0, certShown: false };
 
 const hash = (s) => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7);
 const blocked = (x, z, pad) => colliders.some((c) => (c.r !== undefined ? Math.hypot(x - c.x, z - c.z) < c.r + pad : Math.abs(x - c.x) < c.hw + pad && Math.abs(z - c.z) < c.hd + pad));
@@ -37,22 +38,35 @@ function glowSprite(color, size) {
 }
 
 function makeChest() {
-  const an = makeAnimal('Chest'), g = new THREE.Group();
-  const b = new THREE.Box3().setFromObject(an.root), sz = b.getSize(new THREE.Vector3());
-  an.root.scale.multiplyScalar(1.7 / Math.max(sz.x, sz.z)); g.add(an.root);
-  const glow = glowSprite('rgba(255,210,90,0.9)', 3.2); glow.position.y = 0.9; glow.visible = false; g.add(glow);
-  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.9, 7, 16, 1, true), new THREE.MeshBasicMaterial({ color: '#ffd76a', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-  beam.position.y = 3.5; g.add(beam); scene.add(g);
-  return { g, an, glow, beam, x: 0, z: 0, found: false, col: { x: 0, z: 0, r: 0.75 } };
+  const o = prop('rustic_chest'), g = new THREE.Group();   // "Stylized Rustic Chest" (CGTrader); lid is its own node hinged at the back
+  const b = new THREE.Box3().setFromObject(o), sz = b.getSize(new THREE.Vector3());
+  o.scale.multiplyScalar(1.7 / Math.max(sz.x, sz.z)); g.add(o);
+  const lid = o.getObjectByName('Chest_Lid');
+  scene.add(g);   // no glow or light beam: students find chests with the wand only
+  return { g, lid, lidT: 0, x: 0, z: 0, found: false, col: { x: 0, z: 0, r: 0.75 } };
 }
 function setPos(c, x, z) {
   c.x = x; c.z = z; c.g.position.set(x, groundHeight(x, z), z); c.g.rotation.y = (Math.abs(hash(x + ',' + z)) % 628) / 100;
   c.col.x = x; c.col.z = z; if (!colliders.includes(c.col)) colliders.push(c.col);
 }
-function playChest(c, open) {
-  const acts = c.an.mixer._actions, a = acts.find((x) => x.getClip().name.endsWith(open ? 'Chest_Open' : 'Chest_Close'));
-  acts.forEach((x) => x.stop()); if (a) { a.reset(); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.play(); }
+function playChest(c, open) { c.lidT = open ? -1.75 : 0; }   // lid swings up/down in the animated loop
+
+// ---------- sound effects (synthesised, no files) ----------
+function tone(f, at, dur, vol, type = 'sine', f2) {
+  const a = audio(), t = a.currentTime + at, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.05);
 }
+const SFX = {
+  open() {   // wooden creak, thump, then a sparkle of treasure
+    tone(95, 0, 0.45, 0.07, 'sawtooth', 150); tone(140, 0.05, 0.4, 0.04, 'sawtooth', 110);
+    tone(110, 0.42, 0.12, 0.12, 'triangle', 70);
+    [1568, 2093, 2637, 3136].forEach((f, i) => tone(f, 0.5 + i * 0.07, 0.35, 0.05));
+  },
+  right() { [523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.1, i === 3 ? 0.5 : 0.18, 0.1, 'triangle')); [2093, 2637].forEach((f, i) => tone(f, 0.45 + i * 0.08, 0.3, 0.04)); },
+  wrong() { tone(330, 0, 0.28, 0.08, 'square', 300); tone(250, 0.3, 0.5, 0.08, 'square', 160); },
+};
 function setChests(list) {
   while (st.chests.length < list.length) st.chests.push(makeChest());
   st.chests.forEach((c, i) => {
@@ -99,13 +113,6 @@ function detector(dt, t) {
   gem.classList.toggle('on', on);
   if (wandGem) { wandGem.material.emissiveIntensity = on ? 3 : 0.4; wandGem.userData.halo.scale.setScalar(on ? 0.9 : 0.4); }
 }
-function chestFx(t) {
-  for (const c of st.chests) {
-    const cd = Math.hypot(c.x - me.x, c.z - me.z), live = playing() && !c.found;
-    c.glow.visible = live && cd < 30; c.glow.material.opacity = 0.5 + Math.sin(t * 6) * 0.3;
-    c.beam.material.opacity = live && cd < 9 ? 0.18 + Math.sin(t * 4) * 0.06 : 0;
-  }
-}
 
 // ---------- quiz ----------
 function showQuiz(q, onPick) {
@@ -138,14 +145,14 @@ function showQuiz(q, onPick) {
       ? `<b>✅ ถูกต้อง! +${res.points} คะแนน</b><br>${res.explain || ''}`
       : `<b>${sel < 0 ? '⏰ หมดเวลา!' : '❌ ยังไม่ถูก'} ${res.points < 0 ? res.points + ' คะแนน' : ''}</b> คำตอบคือ “${q.choices[res.answer]}”<br>${res.explain || ''}<br><i>หีบสมบัติหนีไปซ่อนที่ใหม่แล้ว ลองตามหาอีกครั้ง!</i>`;
     $('quiz-res').classList.remove('hidden');
-    if (res.right) { beep(880, 0.15, 0.08, 'triangle'); setTimeout(() => beep(1320, 0.2, 0.08, 'triangle'), 140); } else beep(220, 0.3, 0.07, 'sawtooth');
+    res.right ? SFX.right() : SFX.wrong();
     ok.textContent = 'เล่นต่อ'; ok.disabled = false;
   };
 }
 function closeQuiz() { clearInterval(showQuiz.iv); $('quiz').classList.add('hidden'); st.busy = false; if (net.phase !== 'paused' && net.phase !== 'ended') game.frozen = false; }
 
 function openChest(n) {
-  st.busy = true; game.frozen = true; playChest(n.c, true); audio();
+  st.busy = true; game.frozen = true; playChest(n.c, true); SFX.open();
   if (st.online) { st.pendingChest = n.i; net.send({ t: 'open', chest: n.i }); return; }   // server replies with 'question'
   if (st.used.size >= st.bank.length) st.used.clear();
   let qi; do qi = (Math.random() * st.bank.length) | 0; while (st.used.has(qi));
@@ -165,7 +172,11 @@ function finish(c, right) {
     if (!st.online) { const [x, z] = freeSpot(Math.random, st.chests.filter((o) => o !== c && !o.found).map((o) => [o.x, o.z])); setTimeout(() => setPos(c, x, z), 300); }
     else if (c.next) setTimeout(() => setPos(c, c.next.x, c.next.z), 300);
   }
-  if (st.found >= st.total) toast(`🎉 พบสมบัติครบ ${st.total} หีบ! คะแนนรวม ${st.score}`, 6000);
+  if (st.found >= st.total) { toast(`🎉 พบสมบัติครบ ${st.total} หีบ! คะแนนรวม ${st.score}`, 6000); if (!st.online) certificate(); }
+}
+function certificate() {
+  if (st.certShown || st.gated) return; st.certShown = true;   // teacher plays for fun: no certificate
+  showCertificate({ name: me.name, no: me.no, cls: me.cls, score: st.score, found: st.found, total: st.total, secs: st.secs });
 }
 function updateHud() { $('hud-score').textContent = st.score; $('hud-chests').textContent = st.found; $('hud-total').textContent = st.total; }
 
@@ -176,6 +187,7 @@ export async function startTreasureHunt({ online, seed = 'OFFLINE', gated = fals
     net.on('welcome', (m) => { if (m.chests) setChests(m.chests); if (m.me) { st.score = m.me.score; st.found = m.me.found; } st.total = m.total; updateHud(); });
     if (net.welcome?.chests) setChests(net.welcome.chests);
     if (net.welcome?.me) { st.score = net.welcome.me.score; st.found = net.welcome.me.found; st.total = net.welcome.total; }
+    net.on('phase', (m) => { if (m.phase === 'ended') setTimeout(certificate, 1500); else if (m.phase === 'playing') st.certShown = false; });
     net.on('chests', (m) => { setChests(m.chests); st.score = m.score; st.found = m.found; updateHud(); });
     net.on('question', (m) => {
       const c = st.chests[m.chest];
@@ -196,14 +208,15 @@ export async function startTreasureHunt({ online, seed = 'OFFLINE', gated = fals
     for (let i = 0; i < N_CHESTS; i++) { const [x, z] = freeSpot(r, list.map((c) => [c.x, c.z])); list.push({ x, z, found: false }); }
     setChests(list);
   }
-  animated.push((t, dt) => st.chests.forEach((c) => c.an.update(dt)));
+  animated.push((t, dt) => { if (playing() && net.phase !== 'paused') st.secs += dt; });   // time spent hunting (pauses not counted)
+  animated.push((t, dt) => st.chests.forEach((c) => { if (c.lid) c.lid.rotation.x += (c.lidT - c.lid.rotation.x) * Math.min(1, dt * 7); }));
   updateHud(); attachWand();
   window.__hunt = st;
   $('detector').onclick = () => { st.muted = !st.muted; toast(st.muted ? '🔇 ปิดเสียงไม้กายสิทธิ์' : '🔊 เปิดเสียงไม้กายสิทธิ์', 1200); };
   $('detector').style.pointerEvents = 'auto';
   game.onAct = () => { if (st.busy) return; const n = nearest(); if (n && n.d < OPEN_DIST) openChest(n); };
   game.onTick = (dt, t) => {
-    attachWand(); detector(dt, t); chestFx(t);
+    attachWand(); detector(dt, t);
     st.chests.forEach((c) => (c.g.visible = playing() || c.found));
     const n = nearest();
     $('prompt').classList.toggle('hidden', !(n && n.d < OPEN_DIST) || st.busy);

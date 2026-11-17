@@ -47,11 +47,11 @@ function setBadge() { const b = $('net-badge'); if (b) { b.textContent = net.onl
 // ---------- other players ----------
 const others = new Map();
 function upsertPlayer(r) {
-  const [sid, name, no, cls, x, y, z, ry, s, a] = r, e = r[15] || 0;
+  const [sid, name, no, cls, x, y, z, ry, s, a] = r, e = r[15] || 0, look = r[16] >= 0 ? r[16] : Math.abs(hash(name)) % STUDENT_LOOKS;
   if ((sid === net.sid && net.role === 'student') || (sid === 'teacher' && net.role === 'teacher')) return;
   let o = others.get(sid);
   if (!o) {
-    const isT = sid === 'teacher', ch = makeCharacter(isT ? ROLE_LOOKS.monk : studentLook(Math.abs(hash(name)) % STUDENT_LOOKS));
+    const isT = sid === 'teacher', ch = makeCharacter(isT ? ROLE_LOOKS.monk : studentLook(look));
     ch.root.add(makeNameTag(isT ? '👩‍🏫 ครู' : name, '', isT ? '#ffe08a' : undefined));
     ch.root.position.set(x, y, z); scene.add(ch.root);
     o = { ch, tx: x, ty: y, tz: z, try: ry, s: 0, a: 0, seen: 0 };

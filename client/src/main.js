@@ -323,7 +323,7 @@ window.__dev = { me, teleport, controls, game, groundHeight, scene, collide, wal
 
 export function startPlaying(profile) {
   Object.assign(me, profile);
-  me.look = [...me.name].reduce((a, ch) => a + ch.charCodeAt(0), 0) % STUDENT_LOOKS;
+  if (!(me.look >= 0)) me.look = [...me.name].reduce((a, ch) => a + ch.charCodeAt(0), 0) % STUDENT_LOOKS;
   $('screen-login').classList.add('hidden'); $('hud').classList.remove('hidden');
   spawnAvatar();
   teleport(me.x, me.z);

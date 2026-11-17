@@ -47,6 +47,7 @@ body.touch #quest { display: none; }
 
 /* screens */
 .screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at 50% 30%, rgba(80,40,10,.25), rgba(10,5,0,.75)), url('/bg.svg') center/cover, #3a2410; overflow: auto; padding: 16px; }
+#screen-login { background: linear-gradient(rgba(0,0,0,.05), rgba(10,5,0,.35)), url('/login-bg.jpg') center 35%/cover, #3a2410; }
 .card { width: min(440px, 100%); background: linear-gradient(#5a3a22, #2f1c0f); border: 4px solid var(--gold); border-radius: 20px; padding: 22px; box-shadow: 0 10px 40px rgba(0,0,0,.6), inset 0 0 0 3px #7a4f22; position: relative; }
 .card::before, .card::after { content: '❖'; position: absolute; top: -16px; color: var(--gold); font-size: 26px; text-shadow: 0 2px 4px #000; }
 .card::before { left: 18px; } .card::after { right: 18px; }
@@ -56,6 +57,10 @@ body.touch #quest { display: none; }
 label { display: block; font-size: 14px; color: #fbe7c2; margin-bottom: 10px; }
 input, select, textarea { display: block; width: 100%; margin-top: 4px; padding: 10px 12px; border-radius: 10px; border: 2px solid var(--gold-d); background: #fff8ea; color: #3b2414; font: inherit; font-size: 16px; user-select: text; -webkit-user-select: text; }
 .row { display: flex; gap: 10px; } .row label { flex: 1; }
+.gender { display: flex; gap: 10px; margin-bottom: 8px; } .gender label { flex: 1; margin: 0; }
+.gender input { display: none; }
+.gender span { display: block; text-align: center; padding: 10px; border-radius: 12px; border: 2px solid var(--gold-d); background: rgba(255,248,234,.12); font-size: 17px; cursor: pointer; }
+.gender input:checked + span { background: linear-gradient(#ffe08a, #e2a93a); color: #3b2414; border-color: #8a5a1c; font-weight: 600; }
 .btn-gold { width: 100%; padding: 12px; font: inherit; font-size: 19px; font-weight: 600; color: #3b2414; background: linear-gradient(#ffe08a, #e2a93a); border: 3px solid #8a5a1c; border-radius: 14px; box-shadow: 0 4px 0 #6b3e10; cursor: pointer; margin-top: 6px; }
 .btn-gold:active { transform: translateY(3px); box-shadow: 0 1px 0 #6b3e10; }
 .err { color: #ff9b8a; min-height: 20px; margin-top: 8px; text-align: center; }
@@ -140,3 +145,9 @@ html:fullscreen body.touch #net-badge, html:-webkit-full-screen body.touch #net-
 body.touch #prompt, body.touch #prompt-ride { font-size: 22px; padding: 14px 30px; background: rgba(60,30,8,.85); box-shadow: 0 0 18px rgba(255,210,90,.6); }
 .k-touch { display: none; } body.touch .k-touch { display: inline; } body.touch .k-key { display: none; }
 #tpanel { top: calc(220px + env(safe-area-inset-top)); max-height: calc(100vh - 230px); }
+#cert { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.7); display: flex; align-items: center; justify-content: center; padding: 12px; pointer-events: auto; }
+#cert.hidden { display: none; }
+.cert-box { width: min(900px, 100%); max-height: 100%; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.cert-box img { width: 100%; max-height: calc(100vh - 130px); object-fit: contain; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,.6); -webkit-touch-callout: default; user-select: auto; -webkit-user-select: auto; }
+.cert-btns { display: flex; gap: 10px; width: min(480px, 100%); } .cert-btns .btn-gold { margin: 0; text-align: center; text-decoration: none; display: block; }
+.cert-tip { color: #fbe7c2; font-size: 13px; }

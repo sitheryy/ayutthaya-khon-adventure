@@ -82,7 +82,7 @@ export class Room {
   all(o, filter = () => true) { const s = JSON.stringify(o); for (const [ws, m] of this.sockets) if (m.role && filter(m)) try { ws.send(s); } catch {} }
   save(p) { const { ws, ...rest } = p; return this.ctx.storage.put('p:' + p.sid, rest); }
 
-  publicPlayer(p) { return [p.sid, p.name, p.no, p.cls, +p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2), +p.ry.toFixed(2), +p.s.toFixed(1), p.a ? 1 : 0, p.online ? 1 : 0, p.score, p.found, p.right, p.wrong, p.e || 0]; }
+  publicPlayer(p) { return [p.sid, p.name, p.no, p.cls, +p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2), +p.ry.toFixed(2), +p.s.toFixed(1), p.a ? 1 : 0, p.online ? 1 : 0, p.score, p.found, p.right, p.wrong, p.e || 0, p.look ?? -1]; }
   broadcastPlayers() {
     if (!this.sockets.size) return;
     const list = [...this.players.values()].filter((p) => p.online).map((p) => this.publicPlayer(p));
@@ -114,6 +114,7 @@ export class Room {
       if (!p) { p = { sid, score: 0, found: 0, right: 0, wrong: 0, x: SPAWN.x, y: 0, z: SPAWN.z, ry: 0, s: 0, a: 0 }; this.players.set(sid, p); }
       if (p.ws && p.ws !== ws) try { p.ws.close(4000, 'replaced'); } catch {}
       Object.assign(p, { name: clean(m.name, 40), no: clean(m.no, 4), cls: clean(m.cls, 12), online: true, ws });
+      if (Number.isInteger(m.look) && m.look >= 0 && m.look < 12) p.look = m.look;   // chosen character (even = girl, odd = boy)
       if (this.layout.length && !p.chests) this.newChests(p);
       me.sid = sid; me.role = 'student';
       this.send(ws, { t: 'welcome', role: 'student', sid, phase: this.phase, me: { x: p.x, z: p.z, score: p.score, found: p.found }, chests: this.chestView(p), total: this.layout.length || N_CHESTS });
