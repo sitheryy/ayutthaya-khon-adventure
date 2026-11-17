@@ -88,7 +88,7 @@ function attachWand() {
   [0.0, 0.4].forEach((y) => { const ring = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.008, 6, 12), new THREE.MeshLambertMaterial({ color: '#e9b73c' })); ring.rotation.x = Math.PI / 2; ring.position.y = y; w.add(ring); });
   wandGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.07), new THREE.MeshLambertMaterial({ color: '#9fe4ff', emissive: '#3aa0ff', emissiveIntensity: 0.4 }));
   wandGem.position.y = 0.53; w.add(wandGem);
-  const halo = glowSprite('rgba(140,220,255,0.8)', 0.6); halo.position.y = 0.53; w.add(halo); wandGem.userData.halo = halo;
+  const halo = glowSprite('rgba(255,255,255,0.8)', 0.6); halo.position.y = 0.53; w.add(halo); wandGem.userData.halo = halo;
   w.scale.setScalar(1 / hand.getWorldScale(new THREE.Vector3()).x);   // undo the rig's scale
   hand.add(w); hand.userData.wand = w;
 }
@@ -106,7 +106,10 @@ function detector(dt, t) {
   if (!n) { txt.textContent = !playing() ? (net.phase === 'ended' ? 'จบเกมแล้ว' : 'รอครูเริ่มเกม...') : 'พบสมบัติครบแล้ว! 🎉'; arrow.style.opacity = 0; gem.classList.remove('on'); return; }
   const d = n.d, k = THREE.MathUtils.clamp((d - 4) / 66, 0, 1);       // 0 = right on it, 1 = far
   const interval = 0.09 + Math.pow(k, 1.3) * 1.5;
-  txt.textContent = d < 8 ? 'ใกล้มาก! ✨' : d < 22 ? 'สัญญาณแรง' : d < 45 ? 'สัญญาณปานกลาง' : 'สัญญาณอ่อน';
+  const hue = Math.round(210 * k);   // far = blue, mid = green/yellow, near = red
+  gem.style.setProperty('--h', hue);
+  txt.textContent = `${d < 8 ? 'ใกล้มาก! ✨' : d < 22 ? 'สัญญาณแรง' : d < 45 ? 'สัญญาณปานกลาง' : 'สัญญาณอ่อน'} · ${Math.round(d)} ม.`;
+  if (wandGem) { const c = new THREE.Color(`hsl(${hue},100%,65%)`); wandGem.material.color.copy(c); wandGem.material.emissive.setHSL(hue / 360, 1, 0.5); wandGem.userData.halo.material.color.copy(c); }
   const ang = Math.atan2(n.c.x - me.x, n.c.z - me.z) - (controls.yaw + Math.PI);
   arrow.style.transform = `rotate(${-ang}rad)`; arrow.style.opacity = d < 45 ? 1 : 0.35;
   if (t >= st.nextBeep) { st.nextBeep = t + interval; st.blinkT = 0.08; if (!st.muted && !st.busy) beep(560 + (1 - k) * 760, 0.06, 0.035 + (1 - k) * 0.035, 'sine'); }

@@ -81,10 +81,10 @@ input, select, textarea { display: block; width: 100%; margin-top: 4px; padding:
 
 /* magic wand detector */
 #detector { position: absolute; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; align-items: center; gap: 10px; background: rgba(40,24,12,.72); border: 2px solid var(--gold-d); border-radius: 999px; padding: 6px 16px 6px 8px; }
-#det-gem { width: 30px; height: 30px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff, #7fd6ff 35%, #2a6fb8 75%); box-shadow: 0 0 6px #7fd6ff; transition: box-shadow .05s, filter .05s; }
-#det-gem.on { filter: brightness(1.9); box-shadow: 0 0 22px 8px #9fe4ff; }
+#det-gem { width: 30px; height: 30px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff, hsl(var(--h,200) 100% 70%) 35%, hsl(var(--h,200) 70% 38%) 75%); box-shadow: 0 0 6px hsl(var(--h,200) 100% 70%); transition: box-shadow .05s, filter .05s; }
+#det-gem.on { filter: brightness(1.9); box-shadow: 0 0 22px 8px hsl(var(--h,200) 100% 70%); }
 #det-arrow { font-size: 20px; color: #ffe08a; transition: transform .15s; opacity: .25; }
-#det-text { font-size: 15px; min-width: 120px; }
+#det-text { font-size: 15px; min-width: 150px; }
 body.touch #detector { bottom: 130px; }
 /* quiz */
 #quiz { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(10,5,0,.55); z-index: 25; padding: 12px; }
