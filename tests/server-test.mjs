@@ -25,6 +25,12 @@ assert.equal(wa.role, 'student');
 A.send({ t: 'pos', x: 5, y: 0, z: 25, ry: 1, s: 2, a: 0 }); await sleep(300);
 const pl = await B.wait('players'); assert.ok(pl.list.some((r) => r[0] === 'test-a'), 'B sees A');
 
+// teacher avatar visible to students, can be hidden
+T.send({ t: 'pos', x: 7, y: 0, z: 30, ry: 0, s: 0, a: 0 }); await sleep(400); B.inbox.length = 0;
+let tl = await B.wait('players'); assert.ok(tl.list.some((r) => r[0] === 'teacher' && r[4] === 7), 'student sees teacher');
+T.send({ t: 'show', on: false }); await sleep(400); B.inbox.length = 0; tl = await B.wait('players'); assert.ok(!tl.list.some((r) => r[0] === 'teacher'), 'teacher hidden on toggle');
+T.send({ t: 'show', on: true }); await sleep(300);
+
 // start with a spot pool -> each student gets 12 chests
 const spots = Array.from({ length: 48 }, (_, i) => [(i % 8) * 25 - 90, Math.floor(i / 8) * 25 - 70]);
 T.send({ t: 'cmd', c: 'start', spots });

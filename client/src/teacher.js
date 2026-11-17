@@ -40,6 +40,7 @@ export function startTeacher(token) {
   const send = () => { const t = $('tp-msg').value.trim(); if (!t) return; net.send({ t: 'cmd', c: 'broadcast', text: t }); $('tp-msg').value = ''; };
   $('tp-send').onclick = send; $('tp-msg').onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') send(); };
   $('tp-fly').onclick = () => { game.fly = !game.fly; $('tp-fly').textContent = `✈️ โหมดบิน: ${game.fly ? 'เปิด' : 'ปิด'}`; $('tp-fly').classList.toggle('on', game.fly); if (game.fly) me.y += 8; toast(game.fly ? 'บิน: WASD เคลื่อนที่ · Space ขึ้น · C ลง' : 'ลงเดินบนพื้น', 2500); };
+  let shown = true; $('tp-show').onclick = () => { shown = !shown; net.send({ t: 'show', on: shown }); $('tp-show').textContent = `👁 แสดงตัวครู: ${shown ? 'เปิด' : 'ปิด'}`; $('tp-show').classList.toggle('on', shown); };
   $('tp-lb').onclick = () => showLeaderboard(rows.map((r) => ({ name: r[1], no: r[2], cls: r[3], score: r[11], found: r[12] })).sort((a, b) => b.score - a.score));
   $('overlay').onclick = () => $('overlay').classList.add('hidden');
   $('tp-hide').onclick = (e) => { e.stopPropagation(); $('tpanel').classList.add('mini'); };

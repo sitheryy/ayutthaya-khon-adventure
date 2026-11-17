@@ -2,7 +2,7 @@
 // see each other; the teacher's commands (start / pause / summon / end / broadcast) arrive here.
 import * as THREE from 'three';
 import { me, game, scene, toast, teleport, beep } from './main.js';
-import { makeCharacter, studentLook, STUDENT_LOOKS } from './models.js';
+import { makeCharacter, studentLook, STUDENT_LOOKS, ROLE_LOOKS } from './models.js';
 import { makeNameTag } from './character.js';
 
 const local = ['localhost', '127.0.0.1'].includes(location.hostname);
@@ -47,11 +47,11 @@ function setBadge() { const b = $('net-badge'); if (b) { b.textContent = net.onl
 const others = new Map();
 function upsertPlayer(r) {
   const [sid, name, no, cls, x, y, z, ry, s, a] = r;
-  if (sid === net.sid && net.role === 'student') return;
+  if ((sid === net.sid && net.role === 'student') || (sid === 'teacher' && net.role === 'teacher')) return;
   let o = others.get(sid);
   if (!o) {
-    const ch = makeCharacter(studentLook(Math.abs(hash(name)) % STUDENT_LOOKS));
-    ch.root.add(makeNameTag(name));
+    const isT = sid === 'teacher', ch = makeCharacter(isT ? ROLE_LOOKS.monk : studentLook(Math.abs(hash(name)) % STUDENT_LOOKS));
+    ch.root.add(makeNameTag(isT ? '👩‍🏫 ครู' : name, '', isT ? '#ffe08a' : undefined));
     ch.root.position.set(x, y, z); scene.add(ch.root);
     o = { ch, tx: x, ty: y, tz: z, try: ry, s: 0, a: 0, seen: 0 };
     others.set(sid, o);
@@ -117,7 +117,7 @@ export const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&am
 let last = '', acc = 0;
 export function netTick(dt) {
   updateOthers(dt);
-  if (!net.online || net.role !== 'student') return;
+  if (!net.online || (net.role !== 'student' && net.role !== 'teacher')) return;
   acc += dt; if (acc < 0.125) return; acc = 0;
   const msg = { t: 'pos', x: +me.x.toFixed(2), y: +me.y.toFixed(2), z: +me.z.toFixed(2), ry: +me.face.toFixed(2), s: +me.speed.toFixed(1), a: me.grounded ? 0 : 1 };
   const key = JSON.stringify(msg); if (key === last) return; last = key; net.send(msg);

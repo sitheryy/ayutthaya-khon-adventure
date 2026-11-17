@@ -86,6 +86,8 @@ export class Room {
   broadcastPlayers() {
     if (!this.sockets.size) return;
     const list = [...this.players.values()].filter((p) => p.online).map((p) => this.publicPlayer(p));
+    const t = this.teacher;
+    if (t?.on && [...this.sockets.values()].some((s) => s.role === 'teacher')) list.push(['teacher', 'ครู', '', '', +t.x.toFixed(2), +t.y.toFixed(2), +t.z.toFixed(2), +t.ry.toFixed(2), +t.s.toFixed(1), t.a, 1, 0, 0, 0, 0]);
     this.all({ t: 'players', list });
     this.tickN = (this.tickN || 0) + 1;
     if (this.dirtyRoster || this.tickN % 8 === 0) { this.dirtyRoster = false; this.all({ t: 'roster', list: [...this.players.values()].map((p) => this.publicPlayer(p)) }, (m) => m.role === 'teacher'); }
@@ -151,6 +153,11 @@ export class Room {
     }
 
     // ---------- teacher ----------
+    if (me.role === 'teacher' && (m.t === 'pos' || m.t === 'show')) {   // teacher avatar shown to students
+      const t = (this.teacher ||= { on: true, x: 0, y: 0, z: 20, ry: 0, s: 0, a: 0 }), n = (v, lim) => Math.max(-lim, Math.min(lim, +v || 0));
+      if (m.t === 'show') t.on = !!m.on; else Object.assign(t, { x: n(m.x, 400), y: n(m.y, 200), z: n(m.z, 400), ry: n(m.ry, 7), s: n(m.s, 40), a: m.a ? 1 : 0 });
+      return;
+    }
     if (m.t === 'cmd') {
       if ((m.c === 'start' || m.c === 'end') && !m._go) {   // 3-2-1 countdown on every screen, then apply
         if (this.countingDown) return;

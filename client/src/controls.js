@@ -43,11 +43,18 @@ export class Controls {
       knob.style.transform = `translate(${dx}px,${dy}px)`;
       this.joy.x = dx / R; this.joy.y = -dy / R;
     };
-    pad.addEventListener('pointerdown', (e) => { jid = e.pointerId; pad.setPointerCapture(jid); setJoy(e); });
-    pad.addEventListener('pointermove', (e) => { if (e.pointerId === jid) setJoy(e); });
-    const jend = (e) => { if (e.pointerId !== jid) return; jid = null; this.joy.x = this.joy.y = 0; knob.style.transform = ''; };
+    // mouse: pointer events; touch: touch events tracked by identifier so pressing jump with another finger never drops the stick
+    pad.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') return; jid = e.pointerId; pad.setPointerCapture(jid); setJoy(e); });
+    pad.addEventListener('pointermove', (e) => { if (e.pointerType !== 'touch' && e.pointerId === jid) setJoy(e); });
+    const jend = (e) => { if (e.pointerType === 'touch' || e.pointerId !== jid) return; jid = null; this.joy.x = this.joy.y = 0; knob.style.transform = ''; };
     pad.addEventListener('pointerup', jend); pad.addEventListener('pointercancel', jend);
-    document.getElementById('btn-jump').addEventListener('pointerdown', (e) => { e.preventDefault(); this.jumpQueued = true; });
+    let tid = null;
+    const find = (list) => [...list].find((t) => t.identifier === tid);
+    pad.addEventListener('touchstart', (e) => { if (tid !== null) return; const t = e.changedTouches[0]; tid = t.identifier; setJoy(t); e.preventDefault(); }, { passive: false });
+    addEventListener('touchmove', (e) => { const t = tid !== null && find(e.changedTouches); if (t) { setJoy(t); e.preventDefault(); } }, { passive: false });
+    const tend = (e) => { if (tid !== null && find(e.changedTouches)) { tid = null; this.joy.x = this.joy.y = 0; knob.style.transform = ''; } };
+    addEventListener('touchend', tend); addEventListener('touchcancel', tend);
+    const jb = document.getElementById('btn-jump'); jb.addEventListener('pointerdown', (e) => { e.preventDefault(); this.jumpQueued = true; }); jb.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
     document.getElementById('btn-act').addEventListener('pointerdown', (e) => { e.preventDefault(); this.actQueued = true; });
   }
 
