@@ -9,6 +9,7 @@ import { buildFoliage } from './foliage.js';
 import { torches } from './effects.js';
 const FOL = { trees: [], bushes: [] };
 // user-supplied Thai house pack (CGTrader, royalty free) placed as models; footprint sizes from tools/obj2glb.mjs
+const BUDDHA_FACE = 0;   // turn so the scan faces the model's +z front
 const MODELS = [], MSIZE = { thai_house1: [5.3, 9.5], thai_house2: [6.2, 7.4], thai_house3: [3.8, 7.8], thai_house4: [6.2, 5.8], thai_sala: [3.7, 5.7], thai_jar: [0.9, 0.9], thai_canoe: [1.5, 3.9] };
 // ---------- layout rules: keep every path walkable, buildings face the road ----------
 export function nearestPath(x, z) {
@@ -243,17 +244,11 @@ function chedi(B, x, z, s = 1, color = C.white, ruined = false) {
   } else f(CONE(0.9 * s, 2.5 * s, 8), color, 0, 8 * s, 0);
   boxC(x, z, 3.5 * s, 3.5 * s);
 }
-function buddha(B, x, z, ry = 0, s = 1) {
+function buddha(B, x, z, ry = 0, s = 1) {   // brick base + scanned Thai Buddha (Sketchfab, laurashea, CC-BY)
   const f = frame(B, x, z, ry);
   f(BOX(6 * s, 1.6 * s, 5 * s), C.brick, 0, 0.8 * s, 0);
-  f(CYL(2.6 * s, 2.8 * s, 1 * s, 12), C.cream, 0, 2.1 * s, 0);                       // lotus base
-  f(SPH(2.4 * s, 12, 8), C.gold, 0, 3.1 * s, 0.2 * s, { sy: 0.45 });                   // lap
-  f(CYL(1.2 * s, 1.7 * s, 3 * s, 10), C.gold, 0, 4.9 * s, 0);                          // torso
-  f(BOX(1.1 * s, 3.2 * s, 2.6 * s), '#e8902c', 0.55 * s, 4.9 * s, 0.1 * s, { rz: 0.25 }); // robe sash
-  f(SPH(1.05 * s, 12, 10), C.gold, 0, 7.2 * s, 0);
-  f(CONE(0.45 * s, 1.5 * s, 8), C.gold, 0, 8.6 * s, 0);
-  f(SPH(0.45 * s), C.gold, -1.2 * s, 6.4 * s, 0); f(SPH(0.45 * s), C.gold, 1.2 * s, 6.4 * s, 0);
-  [[-1.5, 0.6], [1.5, 0.6]].forEach(([lx, lz]) => f(CYL(0.35 * s, 0.35 * s, 2.8 * s), C.gold, lx * s, 4.6 * s, lz * s, { rx: 0.4 }));
+  f(CYL(2.6 * s, 2.8 * s, 0.5 * s, 12), C.cream, 0, 1.85 * s, 0);
+  MODELS.push({ name: 'thai_buddha', x, z, ry: ry + BUDDHA_FACE, sc: 1.05 * s, y: 2.1 * s });
   const rt = Math.abs(Math.sin(ry)) > 0.5; boxC(x, z, (rt ? 2.5 : 3) * s, (rt ? 3 : 2.5) * s);
 }
 function brickWall(B, x0, z0, x1, z1, h, r, gaps = []) {
@@ -552,7 +547,6 @@ function zoneGate(B, r) {
   thaiRoofOnly(B, gx, 11.2, wz, 15, 8, C.roofR);
   B.put(BOX(9, 0.2, 14), C.stone, gx, 0.1, wz, { shadow: false });
   // final treasure altar
-  B.put(BOX(5, 1, 5), C.white, gx - 13, 0.5, wz - 22); B.put(BOX(3.6, 0.8, 3.6), C.gold, gx - 13, 1.4, wz - 22); boxC(gx - 13, wz - 22, 2.5, 2.5); // final treasure altar, off the gate road
   [[-14, -10], [14, -10]].forEach(([a, b]) => model('thai_sala', gx + a, wz + b - 8, 0, 1.4));
   [[-22, -6], [22, -6]].forEach(([a, b]) => banner(B, gx + a, wz + b, '#c0392b', 8));
 }
@@ -608,7 +602,7 @@ function danceHall(B, scene) {
   for (const sx of [-1, 1]) { f(CYL(0.18, 0.22, 3.6, 8), '#7a3b22', sx * HW, fl + 1.8, 0); circ(x + sx * HW, z, 0.3); }
   // back wall with mirror + barre
   f(BOX(HW * 2, 3.4, 0.3), '#efe2c4', 0, fl + 1.7, HD - 0.15); boxC(x, z + HD - 0.15, HW, 0.3);
-  f(BOX(HW * 2 - 2, 2.2, 0.06), '#bfe0f2', 0, fl + 1.55, HD - 0.33, { shadow: false }); f(BOX(HW * 2 - 1.8, 0.12, 0.08), C.gold, 0, fl + 2.7, HD - 0.33);
+  f(BOX(HW * 2 - 3, 2.2, 0.06), '#bfe0f2', 0, fl + 1.55, HD - 0.33, { shadow: false }); f(BOX(HW * 2 - 2.8, 0.12, 0.08), C.gold, 0, fl + 2.7, HD - 0.33);
   f(CYL(0.05, 0.05, HW * 2 - 2, 6), C.woodL, 0, fl + 1.05, HD - 0.75, { rz: Math.PI / 2 });
   for (const bx of [-5, 0, 5]) f(BOX(0.06, 0.6, 0.45), C.woodL, bx, fl + 0.75, HD - 0.55);
   // low lattice rails on the sides
@@ -617,8 +611,8 @@ function danceHall(B, scene) {
   f(gable(HW * 2 + 2, HD * 2 + 2.4, 2.4), C.roofR, 0, fl + 3.6, 0); f(gable(HW * 2 + 0.6, HD * 2 - 1, 1.9), C.roofG, 0, fl + 4.4, 0);
   for (const sx of [-1, 1]) f(CONE(0.12, 1.1, 5), C.gold, sx * (HW + 0.9), fl + 6.6, 0, { rz: -sx * 0.5 });
   // sign over the entrance
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 1.3), new THREE.MeshLambertMaterial({ map: signTexture('ห้องนาฏศิลป์', 'ฝึกท่ารำโขน · ดนตรีไทย', '#9b59b6') }));
-  sign.position.set(x, fl + 3.25, z - HD - 0.25); sign.rotation.y = Math.PI; scene.add(sign);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 1.6), new THREE.MeshLambertMaterial({ map: signTexture('ห้องนาฏศิลป์', 'โรงเรียนตราดสรรเสริญวิทยาคม', '#9b59b6') }));
+  sign.position.set(x, fl + 3.1, z - HD - 0.25); sign.rotation.y = Math.PI; scene.add(sign);
   // khong wong yai: rattan ring + 16 bronze gongs
   const kx = -4.6, kz = 1.6;
   f(new THREE.TorusGeometry(1.1, 0.06, 6, 24, Math.PI * 1.6), '#8a5a22', kx, fl + 0.32, kz, { rx: Math.PI / 2, rz: Math.PI * 0.7 });
@@ -640,7 +634,7 @@ function danceHall(B, scene) {
   P('kk_rug_rectangle_stripes_A', 0, -0.4, 0, 2.2, fl + 0.05);
   P('kk_cabinet_medium_decorated', 5.7, -1.6, -Math.PI / 2, 0.9, fl); boxC(x + 5.7, z - 1.6, 0.5, 0.95);
   P('kk_shelf_B_large_decorated', -6.6, 3.0, Math.PI / 2, 0.9, fl);
-  P('kk_pictureframe_large_A', 6.75, 1.2, -Math.PI / 2, 1.1, fl + 1.9);
+  [-6.2, 6.2].forEach((lx) => P('kk_pictureframe_large_A', lx, HD - 0.3, Math.PI, 0.95, fl + 2.0));   // hung on the back wall beside the mirror
   for (const [lx, lz] of [[-6.3, 4.2], [6.3, 4.2]]) { P('kk_lamp_standing', lx, lz, 0, 0.8, fl); circ(x + lx, z + lz, 0.35); }
   for (const lx of [-2.4, -1.2, 0, 1.2, 2.4]) P('kk_pillow_A', lx, -3.7, 0, 1.3, fl + 0.1);
   P('kk_table_small', 5.4, -3.6, 0, 0.9, fl); P('kk_chair_A_wood', 5.4, -2.7, Math.PI, 0.9, fl); circ(x + 5.4, z - 3.4, 0.6);
@@ -884,17 +878,60 @@ function buildLeafLitter(scene, r, low) {
   }
   im.count = k; im.receiveShadow = true; scene.add(im);
 }
+// waterfall pouring off the west cliffs into the forest stream pool
+function buildWaterfall(scene) {
+  const pool = { x: ZONES[3].x - 33, z: ZONES[3].z + 8 }, top = 12, W = 5, segY = 24;
+  const g = new THREE.PlaneGeometry(W, 1, 8, segY), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {   // bend the sheet: lip at the cliff, curving out and down into the pool
+    const t = p.getY(i) + 0.5, fall = 1 - t;          // t=1 top, 0 bottom
+    p.setXYZ(i, p.getX(i) * (1 + fall * 0.25), top * t + 0.05, -9.5 + Math.pow(fall, 0.6) * 4.5);
+  }
+  g.computeVertexNormals();
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.DoubleSide, uniforms: { uTime },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform float uTime; varying vec2 vUv;
+      float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float n(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f); return mix(mix(h(i), h(i+vec2(1,0)), f.x), mix(h(i+vec2(0,1)), h(i+vec2(1,1)), f.x), f.y); }
+      void main(){
+        vec2 q = vec2(vUv.x * 9.0, vUv.y * 3.0 + uTime * 2.4);
+        float s = n(q) * 0.6 + n(q * 2.3 + 5.0) * 0.4;
+        vec3 c = mix(vec3(0.45, 0.72, 0.92), vec3(1.0), smoothstep(0.45, 0.85, s));
+        float edge = smoothstep(0.0, 0.12, vUv.x) * smoothstep(1.0, 0.88, vUv.x);
+        float a = (0.55 + s * 0.45) * edge;
+        a = mix(a, 1.0, smoothstep(0.15, 0.0, vUv.y) * edge * 0.6);   // white churn at the bottom
+        gl_FragColor = vec4(c + (1.0 - vUv.y) * 0.15, a);
+        #include <colorspace_fragment>
+      }`,
+  });
+  const fallM = new THREE.Mesh(g, mat); fallM.position.set(pool.x, 0, pool.z); fallM.rotation.y = Math.PI / 2; scene.add(fallM);
+  // foam ring + rising spray at the base
+  const fx = pool.x - 5, fz = pool.z;
+  const foam = new THREE.Mesh(new THREE.CircleGeometry(3.2, 24), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.55, depthWrite: false }));
+  foam.rotation.x = -Math.PI / 2; foam.position.set(fx, 0.12, fz); scene.add(foam);
+  const N = 140, sp = new THREE.BufferGeometry(), pos = new Float32Array(N * 3), seed = new Float32Array(N);
+  for (let i = 0; i < N; i++) { seed[i] = Math.random(); pos.set([(Math.random() - 0.5) * 4, 0, (Math.random() - 0.5) * 4], i * 3); }
+  sp.setAttribute('position', new THREE.BufferAttribute(pos, 3)); sp.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1));
+  const spray = new THREE.Points(sp, new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, uniforms: { uTime },
+    vertexShader: `uniform float uTime; attribute float aSeed; varying float vA;
+      void main(){ float t = fract(uTime * 0.6 + aSeed); vec3 p = position * (0.6 + t); p.y = t * 3.5 * (0.5 + aSeed);
+        vA = (1.0 - t) * 0.7; vec4 mv = modelViewMatrix * vec4(p, 1.0); gl_PointSize = (18.0 + aSeed * 22.0) / -mv.z * 10.0; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: 'varying float vA; void main(){ float d = length(gl_PointCoord - 0.5); gl_FragColor = vec4(1.0, 1.0, 1.0, vA * smoothstep(0.5, 0.0, d)); }',
+  }));
+  spray.position.set(fx, 0, fz); scene.add(spray);
+  animated.push((t) => { foam.scale.setScalar(1 + Math.sin(t * 3) * 0.06); foam.material.opacity = 0.45 + Math.sin(t * 5) * 0.1; });
+}
 function buildRice(scene, r, low) {
   // Thai rice paddies: instanced blade clumps + low earth dikes
-  const blade = mergeGeometries([0, 1, 2, 3, 4].map((i) => { const g = new THREE.PlaneGeometry(0.06, 0.9); g.translate(0, 0.45, 0); g.rotateZ((i - 2) * 0.18); g.rotateY(i * 1.3); return g.toNonIndexed(); }));
   const pts = [];
   for (const f of RICE) for (let x = f.x0 + 1; x < f.x1 - 0.5; x += low ? 1.4 : 0.9) for (let z = f.z0 + 1; z < f.z1 - 0.5; z += low ? 1.4 : 0.9) {
     if (Math.abs(((x - f.x0) % 8)) < 0.6 || Math.abs(((z - f.z0) % 8)) < 0.6) continue; // dikes
     pts.push([x + (r() - 0.5) * 0.3, z + (r() - 0.5) * 0.3]);
   }
-  const im = new THREE.InstancedMesh(blade, new THREE.MeshLambertMaterial({ color: '#a6cf4c', side: THREE.DoubleSide }), pts.length), d = new THREE.Object3D(), c = new THREE.Color();
-  pts.forEach(([x, z], i) => { d.position.set(x, 0, z); d.rotation.set(0, r() * 6, 0); d.scale.setScalar(0.8 + r() * 0.5); d.updateMatrix(); im.setMatrixAt(i, d.matrix); im.setColorAt(i, c.setHSL(0.2 + r() * 0.04, 0.55, 0.42 + r() * 0.1)); });
-  im.receiveShadow = true; scene.add(im);
+  // Quaternius Rice clumps (CC0), two variants
+  const clumps = pts.filter((_, i) => i % 2 === 0).map(([x, z]) => [x, 0, z, r() * 6, 0.85 + r() * 0.35]);
+  ['Rice_3', 'Rice_4'].forEach((n, k) => instanceProp(scene, n, clumps.filter((_, i) => i % 2 === k), 1.0, 1.05));
   const B = new Builder();
   for (const f of RICE) {
     for (let x = f.x0; x <= f.x1; x += 8) B.put(BOX(0.7, 0.35, f.z1 - f.z0), '#8a6a42', x, 0.15, (f.z0 + f.z1) / 2);
@@ -984,6 +1021,7 @@ export function buildWorld(scene, { low = false } = {}) {
   buildLeafLitter(scene, r, low);
   buildLanterns(scene, r);
   buildRice(scene, r, low);
+  buildWaterfall(scene);
   const grass = buildGrass(scene, { sub: low ? 170 : 300, patch: low ? 38 : 60, uTime });
   return { grass };
 }

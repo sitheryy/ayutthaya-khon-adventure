@@ -117,7 +117,7 @@ table.lb tr.me td { background: rgba(255,224,138,.3); }
 #net-badge { position: fixed; left: 10px; bottom: 8px; z-index: 12; }
 body.touch #net-badge { bottom: auto; top: calc(108px + env(safe-area-inset-top)); }
 
-body.touch #prompt { bottom: 215px; }
+body.touch #prompt, body.touch #prompt-ride { bottom: 215px; }
 body.touch #toast { top: 16%; }
 
 #countdown { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 40; pointer-events: none; font-size: min(30vw, 220px); font-weight: 700; color: #ffe08a; text-shadow: 0 6px 0 #8a5a22, 0 0 40px rgba(255,200,80,.8); animation: cd-pop 1s ease-out; }
@@ -133,3 +133,5 @@ body.touch #toast { top: 16%; }
 /* iPad fullscreen: Safari draws its own close (X) button top-left; move the HUD clear of it */
 html:fullscreen #hud-tl, html:-webkit-full-screen #hud-tl { top: 70px; }
 html:fullscreen body.touch #net-badge, html:-webkit-full-screen body.touch #net-badge { top: 168px; }
+
+#prompt-ride { position: absolute; bottom: 84px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.6); padding: 8px 18px; border-radius: 999px; font-size: 16px; border: 2px solid var(--gold); }

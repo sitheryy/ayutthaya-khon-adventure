@@ -7,6 +7,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { flyingLeaves, windLines, tiltShiftPasses, fireflies } from './effects.js';
 import { updateCycle } from './cycle.js';
 import { buildLife } from './life.js';
+import { spawnElephants, nearestElephant, setElephant, animateElephants, elephants, SEAT } from './elephant.js';
 import { CITY, SUN_DIR, buildWorld, buildSky, ZONES, SPAWN, HALF, WALL_Z, colliders, animated, uTime, groundHeight, isBlockedWater, zoneAt, riverX, PATHS, waters, surfaceAt } from './world.js';
 import { makeNameTag } from './character.js';
 import { loadAssets, makeCharacter, studentLook, STUDENT_LOOKS } from './models.js';
@@ -43,12 +44,14 @@ await document.fonts.load('600 58px Mitr').catch(() => {});
 await loadAssets((p) => (loginBtn.textContent = `กำลังโหลดโลก... ${Math.round(p * 100)}%`));
 buildSky(scene);
 const { grass } = buildWorld(scene, { low: LOW });
+spawnElephants(scene, [[14, 36, 0.6], [-18, 6, -2.2]]);   // two rideable royal elephants near the plaza
+animated.push(animateElephants);
 const leaves = flyingLeaves(scene, uTime, LOW ? 50 : 110);
 windLines(scene, uTime, LOW ? 8 : 18);
 loginBtn.disabled = false; loginBtn.textContent = 'เข้าสู่โลกผจญภัย';
 
 // ---------- player ----------
-export const me = { x: SPAWN.x, z: SPAWN.z, y: 0, vy: 0, face: Math.PI, speed: 0, grounded: true, look: 0, name: '', no: '', cls: '' };
+export const me = { ride: -1, x: SPAWN.x, z: SPAWN.z, y: 0, vy: 0, face: Math.PI, speed: 0, grounded: true, look: 0, name: '', no: '', cls: '' };
 let avatar = null;
 function spawnAvatar() {
   if (avatar) scene.remove(avatar.root);
@@ -61,9 +64,10 @@ function spawnAvatar() {
 
 const controls = new Controls(canvas);
 controls.yaw = 0;
-const PR = 0.45; // player radius
+let PR = 0.45; // player radius (bigger while riding an elephant)
 
 function collide(x, z) {
+  for (let i = 0; i < elephants.length; i++) if (i !== me.ride) { const e = elephants[i], dx = x - e.x, dz = z - e.z, rr = 2.2 + PR, d2 = dx * dx + dz * dz; if (d2 < rr * rr && d2 > 1e-6) { const d = Math.sqrt(d2), k = (rr - d) / d; x += dx * k; z += dz * k; } }
   for (const c of colliders) {
     if (c.r !== undefined) {
       const dx = x - c.x, dz = z - c.z, rr = c.r + PR, d2 = dx * dx + dz * dz;
@@ -107,7 +111,7 @@ function updatePlayer(dt) {
   const sy = Math.sin(controls.yaw), cy = Math.cos(controls.yaw);
   const dx = cy * m.x - sy * m.y, dz = -sy * m.x - cy * m.y;
   const mag = Math.min(1, Math.hypot(m.x, m.y));
-  const spd = (m.run ? 7.5 : 4.6) * mag;
+  const spd = (me.ride >= 0 ? (m.run ? 8.5 : 5) : (m.run ? 7.5 : 4.6)) * mag;
   let nx = me.x + (mag ? dx / Math.hypot(dx, dz) : 0) * spd * dt;
   let nz = me.z + (mag ? dz / Math.hypot(dx, dz) : 0) * spd * dt;
   if (!walkable(nx, nz)) { if (walkable(nx, me.z)) nz = me.z; else if (walkable(me.x, nz)) nx = me.x; else { nx = me.x; nz = me.z; } }
@@ -122,10 +126,17 @@ function updatePlayer(dt) {
     me.face += d * Math.min(1, dt * 12);
   }
   const gh = groundHeight(me.x, me.z);
-  if (!game.frozen && controls.takeJump() && me.grounded) { me.vy = 7.8; me.grounded = false; Sfx.jump?.(); }
+  if (!game.frozen && controls.takeJump() && me.grounded && me.ride < 0) { me.vy = 7.8; me.grounded = false; Sfx.jump?.(); }
   me.vy -= 22 * dt; me.y += me.vy * dt;
   if (me.y <= gh) { me.y = gh; me.vy = 0; me.grounded = true; } else if (me.y - gh > 0.05) me.grounded = false;
-  if (controls.takeAct() && !game.frozen) game.onAct?.();
+  if (controls.takeAct() && !game.frozen && !rideToggle()) game.onAct?.();
+  $('prompt-ride').classList.toggle('hidden', !(me.ride >= 0 || (nearestElephant(me.x, me.z, 5) >= 0 && $('prompt').classList.contains('hidden'))));
+  $('prompt-ride').innerHTML = me.ride >= 0 ? 'กด <b>E</b> / ✋ เพื่อลงจากช้าง' : 'กด <b>E</b> / ✋ เพื่อขี่ช้าง 🐘';
+  if (me.ride >= 0) {
+    setElephant(me.ride, me.x, me.z, me.face, me.speed, dt);
+    if (avatar) { avatar.root.position.set(me.x, me.y + SEAT, me.z); avatar.root.rotation.y = me.face; avatar.update(dt); }
+    footsteps(dt); return;
+  }
   footsteps(dt);
   if (avatar) {
     avatar.root.position.set(me.x, me.y, me.z);
@@ -134,12 +145,27 @@ function updatePlayer(dt) {
   }
 }
 
-export function teleport(x, z) { me.x = x; me.z = z; me.y = groundHeight(x, z); me.vy = 0; }
+// E / ✋ near an elephant: climb on; again: climb off beside it. A chest in reach takes priority.
+function rideToggle() {
+  if (me.ride >= 0) {
+    const e = elephants[me.ride]; me.ride = -1; PR = 0.45; e.rider = null;
+    const sx = Math.cos(me.face) * 3.4, sz = -Math.sin(me.face) * 3.4; me.x += sx; me.z += sz; [me.x, me.z] = collide(me.x, me.z); me.y = groundHeight(me.x, me.z);
+    if (avatar) { avatar.locked = false; avatar.play('Idle'); }
+    return true;
+  }
+  if (!$('prompt').classList.contains('hidden')) return false;
+  const i = nearestElephant(me.x, me.z, 5); if (i < 0) return false;
+  const e = elephants[i]; if (e.remote && performance.now() - e.remote < 1500) { toast('มีคนขี่ช้างตัวนี้อยู่แล้ว', 1500); return true; }
+  me.ride = i; PR = 1.9; e.rider = 'me'; me.x = e.x; me.z = e.z; me.face = e.ry; me.y = groundHeight(me.x, me.z); me.vy = 0;
+  if (avatar) { avatar.play('Sit_Floor_Idle', 0.2); avatar.locked = true; }
+  toast('🐘 ขี่ช้างแล้ว! กด E / ✋ อีกครั้งเพื่อลง', 2200); return true;
+}
+export function teleport(x, z) { if (me.ride >= 0) rideToggle(); me.x = x; me.z = z; me.y = groundHeight(x, z); me.vy = 0; }
 
 // ---------- camera ----------
 const camTarget = new THREE.Vector3(me.x, 1.3, me.z), _fv = new THREE.Vector3();
 function updateCamera(dt) {
-  camTarget.lerp(new THREE.Vector3(me.x, me.y + 1.3, me.z), 1 - Math.exp(-dt * 12));
+  camTarget.lerp(new THREE.Vector3(me.x, me.y + 1.3 + (me.ride >= 0 ? SEAT : 0), me.z), 1 - Math.exp(-dt * 12));
   const { yaw, pitch, dist } = controls;
   camera.position.set(camTarget.x + Math.sin(yaw) * Math.cos(pitch) * dist, camTarget.y + Math.sin(pitch) * dist, camTarget.z + Math.cos(yaw) * Math.cos(pitch) * dist);
   if (camera.position.y < 0.6) camera.position.y = 0.6;

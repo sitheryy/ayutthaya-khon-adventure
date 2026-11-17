@@ -82,12 +82,12 @@ export class Room {
   all(o, filter = () => true) { const s = JSON.stringify(o); for (const [ws, m] of this.sockets) if (m.role && filter(m)) try { ws.send(s); } catch {} }
   save(p) { const { ws, ...rest } = p; return this.ctx.storage.put('p:' + p.sid, rest); }
 
-  publicPlayer(p) { return [p.sid, p.name, p.no, p.cls, +p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2), +p.ry.toFixed(2), +p.s.toFixed(1), p.a ? 1 : 0, p.online ? 1 : 0, p.score, p.found, p.right, p.wrong]; }
+  publicPlayer(p) { return [p.sid, p.name, p.no, p.cls, +p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2), +p.ry.toFixed(2), +p.s.toFixed(1), p.a ? 1 : 0, p.online ? 1 : 0, p.score, p.found, p.right, p.wrong, p.e || 0]; }
   broadcastPlayers() {
     if (!this.sockets.size) return;
     const list = [...this.players.values()].filter((p) => p.online).map((p) => this.publicPlayer(p));
     const t = this.teacher;
-    if (t?.on && [...this.sockets.values()].some((s) => s.role === 'teacher')) list.push(['teacher', 'ครู', '', '', +t.x.toFixed(2), +t.y.toFixed(2), +t.z.toFixed(2), +t.ry.toFixed(2), +t.s.toFixed(1), t.a, 1, 0, 0, 0, 0]);
+    if (t?.on && [...this.sockets.values()].some((s) => s.role === 'teacher')) list.push(['teacher', 'ครู', '', '', +t.x.toFixed(2), +t.y.toFixed(2), +t.z.toFixed(2), +t.ry.toFixed(2), +t.s.toFixed(1), t.a, 1, 0, 0, 0, 0, t.e || 0]);
     this.all({ t: 'players', list });
     this.tickN = (this.tickN || 0) + 1;
     if (this.dirtyRoster || this.tickN % 8 === 0) { this.dirtyRoster = false; this.all({ t: 'roster', list: [...this.players.values()].map((p) => this.publicPlayer(p)) }, (m) => m.role === 'teacher'); }
@@ -126,7 +126,7 @@ export class Room {
       if (m.t === 'pos') {
         if (this.phase === 'paused') return;
         for (const k of ['x', 'y', 'z', 'ry', 's']) if (Number.isFinite(m[k])) p[k] = Math.max(-500, Math.min(500, m[k]));
-        p.a = !!m.a; return;
+        p.a = !!m.a; p.e = Math.max(0, Math.min(9, m.e | 0)); return;
       }
       if (m.t === 'open') {
         if (this.phase !== 'playing') return this.send(ws, { t: 'notice', msg: 'รอครูเริ่มเกมก่อนนะ' });
@@ -155,7 +155,7 @@ export class Room {
     // ---------- teacher ----------
     if (me.role === 'teacher' && (m.t === 'pos' || m.t === 'show')) {   // teacher avatar shown to students
       const t = (this.teacher ||= { on: true, x: 0, y: 0, z: 20, ry: 0, s: 0, a: 0 }), n = (v, lim) => Math.max(-lim, Math.min(lim, +v || 0));
-      if (m.t === 'show') t.on = !!m.on; else Object.assign(t, { x: n(m.x, 400), y: n(m.y, 200), z: n(m.z, 400), ry: n(m.ry, 7), s: n(m.s, 40), a: m.a ? 1 : 0 });
+      if (m.t === 'show') t.on = !!m.on; else Object.assign(t, { x: n(m.x, 400), y: n(m.y, 200), z: n(m.z, 400), ry: n(m.ry, 7), s: n(m.s, 40), a: m.a ? 1 : 0, e: Math.max(0, Math.min(9, m.e | 0)) });
       return;
     }
     if (m.t === 'cmd') {

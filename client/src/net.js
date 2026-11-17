@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { me, game, scene, toast, teleport, beep } from './main.js';
 import { makeCharacter, studentLook, STUDENT_LOOKS, ROLE_LOOKS } from './models.js';
 import { makeNameTag } from './character.js';
+import { elephants, setElephant, SEAT } from './elephant.js';
 
 const local = ['localhost', '127.0.0.1'].includes(location.hostname);
 export const SERVER = (import.meta.env.VITE_SERVER || (local ? 'http://localhost:8787' : '')).replace(/\/$/, '');
@@ -46,7 +47,7 @@ function setBadge() { const b = $('net-badge'); if (b) { b.textContent = net.onl
 // ---------- other players ----------
 const others = new Map();
 function upsertPlayer(r) {
-  const [sid, name, no, cls, x, y, z, ry, s, a] = r;
+  const [sid, name, no, cls, x, y, z, ry, s, a] = r, e = r[15] || 0;
   if ((sid === net.sid && net.role === 'student') || (sid === 'teacher' && net.role === 'teacher')) return;
   let o = others.get(sid);
   if (!o) {
@@ -56,7 +57,7 @@ function upsertPlayer(r) {
     o = { ch, tx: x, ty: y, tz: z, try: ry, s: 0, a: 0, seen: 0 };
     others.set(sid, o);
   }
-  Object.assign(o, { tx: x, ty: y, tz: z, try: ry, s, a, seen: performance.now(), name, no, cls });
+  Object.assign(o, { tx: x, ty: y, tz: z, try: ry, s, a, e, seen: performance.now(), name, no, cls });
   game.others.set(sid, { x, z });
 }
 export function updateOthers(dt) {
@@ -65,7 +66,10 @@ export function updateOthers(dt) {
     if (now - o.seen > 4000) { scene.remove(o.ch.root); others.delete(sid); game.others.delete(sid); continue; }
     const p = o.ch.root.position; p.x += (o.tx - p.x) * k; p.y += (o.ty - p.y) * k; p.z += (o.tz - p.z) * k;
     let d = o.try - o.ch.root.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); o.ch.root.rotation.y += d * k;
-    o.ch.animate(dt, o.s, !!o.a);
+    if (o.e && elephants[o.e - 1]) {   // riding: move that elephant, sit on its back
+      const el = elephants[o.e - 1]; el.remote = now; setElephant(o.e - 1, p.x, p.z, o.ch.root.rotation.y, o.s, dt);
+      o.ch.root.position.y = p.y + SEAT; if (!o.sitting) { o.ch.play('Sit_Floor_Idle', 0.2); o.ch.locked = true; o.sitting = true; } o.ch.update(dt);
+    } else { if (o.sitting) { o.ch.locked = false; o.sitting = false; } o.ch.animate(dt, o.s, !!o.a); }
   }
 }
 
@@ -119,7 +123,7 @@ export function netTick(dt) {
   updateOthers(dt);
   if (!net.online || (net.role !== 'student' && net.role !== 'teacher')) return;
   acc += dt; if (acc < 0.125) return; acc = 0;
-  const msg = { t: 'pos', x: +me.x.toFixed(2), y: +me.y.toFixed(2), z: +me.z.toFixed(2), ry: +me.face.toFixed(2), s: +me.speed.toFixed(1), a: me.grounded ? 0 : 1 };
+  const msg = { t: 'pos', x: +me.x.toFixed(2), y: +me.y.toFixed(2), z: +me.z.toFixed(2), ry: +me.face.toFixed(2), s: +me.speed.toFixed(1), a: me.grounded ? 0 : 1, e: me.ride + 1 };
   const key = JSON.stringify(msg); if (key === last) return; last = key; net.send(msg);
 }
 
