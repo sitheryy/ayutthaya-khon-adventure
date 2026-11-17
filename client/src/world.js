@@ -581,8 +581,60 @@ function welcomeArches(B, scene) {
     });
   }
 }
+// ห้องนาฏศิลป์: open Thai pavilion near the spawn — teak floor, mirror wall + barre, khong wong, ranat, chada stands, KayKit furniture (CC0)
+export const DANCE = { x: -6, z: 48 };
+function danceHall(B, scene) {
+  const { x, z } = DANCE, f = frame(B, x, z, 0), HW = 7, HD = 5, fl = 0.45, P = (n, lx, lz, ry = 0, sc = 0.9, y) => MODELS.push({ name: n, x: x + lx, z: z + lz, ry, sc, y });
+  f(BOX(HW * 2, 0.45, HD * 2), C.woodD, 0, fl - 0.22, 0); PLATFORMS.push({ x, z, hw: HW, hd: HD, h: fl });
+  f(BOX(HW * 2 - 0.4, 0.04, HD * 2 - 0.4), '#c98a4b', 0, fl + 0.02, 0);                       // polished teak
+  f(BOX(3, 0.22, 1.2), C.woodD, 0, fl - 0.33, -HD - 0.6);                                          // front step
+  for (let i = -2; i <= 2; i++) for (const sz of [-1, 1]) {                                       // posts (front middle left open)
+    if (sz === -1 && Math.abs(i) < 1) continue;
+    const px = i * HW / 2; f(CYL(0.18, 0.22, 3.6, 8), '#7a3b22', px, fl + 1.8, sz * HD); circ(x + px, z + sz * HD, 0.3);
+  }
+  for (const sx of [-1, 1]) { f(CYL(0.18, 0.22, 3.6, 8), '#7a3b22', sx * HW, fl + 1.8, 0); circ(x + sx * HW, z, 0.3); }
+  // back wall with mirror + barre
+  f(BOX(HW * 2, 3.4, 0.3), '#efe2c4', 0, fl + 1.7, HD - 0.15); boxC(x, z + HD - 0.15, HW, 0.3);
+  f(BOX(HW * 2 - 2, 2.2, 0.06), '#bfe0f2', 0, fl + 1.55, HD - 0.33, { shadow: false }); f(BOX(HW * 2 - 1.8, 0.12, 0.08), C.gold, 0, fl + 2.7, HD - 0.33);
+  f(CYL(0.05, 0.05, HW * 2 - 2, 6), C.woodL, 0, fl + 1.05, HD - 0.75, { rz: Math.PI / 2 });
+  for (const bx of [-5, 0, 5]) f(BOX(0.06, 0.6, 0.45), C.woodL, bx, fl + 0.75, HD - 0.55);
+  // low lattice rails on the sides
+  for (const sx of [-1, 1]) { f(BOX(0.15, 0.9, HD * 2), C.woodL, sx * HW, fl + 0.45, 0); boxC(x + sx * HW, z, 0.15, HD); }
+  // tiered Thai roof + chofa
+  f(gable(HW * 2 + 2, HD * 2 + 2.4, 2.4), C.roofR, 0, fl + 3.6, 0); f(gable(HW * 2 + 0.6, HD * 2 - 1, 1.9), C.roofG, 0, fl + 4.4, 0);
+  for (const sx of [-1, 1]) f(CONE(0.12, 1.1, 5), C.gold, sx * (HW + 0.9), fl + 6.6, 0, { rz: -sx * 0.5 });
+  // sign over the entrance
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 1.3), new THREE.MeshLambertMaterial({ map: signTexture('ห้องนาฏศิลป์', 'ฝึกท่ารำโขน · ดนตรีไทย', '#9b59b6') }));
+  sign.position.set(x, fl + 3.25, z - HD - 0.25); sign.rotation.y = Math.PI; scene.add(sign);
+  // khong wong yai: rattan ring + 16 bronze gongs
+  const kx = -4.6, kz = 1.6;
+  f(new THREE.TorusGeometry(1.1, 0.06, 6, 24, Math.PI * 1.6), '#8a5a22', kx, fl + 0.32, kz, { rx: Math.PI / 2, rz: Math.PI * 0.7 });
+  for (let i = 0; i < 16; i++) { const a = Math.PI * 0.7 + (i / 15) * Math.PI * 1.6; f(CYL(0.13, 0.13, 0.07, 10), '#b8862b', kx + Math.cos(a) * 1.1, fl + 0.42, kz + Math.sin(a) * 1.1); f(CYL(0.05, 0.05, 0.05, 6), '#e0b040', kx + Math.cos(a) * 1.1, fl + 0.47, kz + Math.sin(a) * 1.1); }
+  circ(x + kx, z + kz, 1.2);
+  // ranat ek: curved boat body on a stand + 21 bars
+  const rx = 4.6, rz = 1.8;
+  f(BOX(0.5, 0.35, 0.5), '#5a2a14', rx, fl + 0.18, rz); f(BOX(2.2, 0.3, 0.55), '#7a3b22', rx, fl + 0.5, rz);
+  for (const s of [-1, 1]) f(BOX(0.4, 0.3, 0.55), '#7a3b22', rx + s * 1.2, fl + 0.62, rz, { rz: s * 0.4 });
+  for (let i = 0; i < 21; i++) f(BOX(0.075, 0.04, 0.42 - i * 0.008), i % 2 ? '#c99050' : '#a8743c', rx - 1 + i * 0.1, fl + 0.68, rz);
+  circ(x + rx, z + rz, 1.2);
+  // chada headdresses on stands along the left rail
+  for (const [cx, cz] of [[-6.2, -2.6], [-6.2, -0.6]]) {
+    f(CYL(0.08, 0.12, 1.1, 6), C.woodD, cx, fl + 0.55, cz); f(CYL(0.22, 0.2, 0.25, 10), C.gold, cx, fl + 1.2, cz);
+    f(CONE(0.2, 0.5, 10), C.gold, cx, fl + 1.55, cz); f(CONE(0.12, 0.45, 8), '#f3d27a', cx, fl + 1.95, cz); f(CONE(0.05, 0.4, 6), C.gold, cx, fl + 2.3, cz);
+    circ(x + cx, z + cz, 0.3);
+  }
+  // KayKit Furniture Bits (CC0)
+  P('kk_rug_rectangle_stripes_A', 0, -0.4, 0, 2.2, fl + 0.05);
+  P('kk_cabinet_medium_decorated', 5.7, -1.6, -Math.PI / 2, 0.9, fl); boxC(x + 5.7, z - 1.6, 0.5, 0.95);
+  P('kk_shelf_B_large_decorated', -6.6, 3.0, Math.PI / 2, 0.9, fl);
+  P('kk_pictureframe_large_A', 6.75, 1.2, -Math.PI / 2, 1.1, fl + 1.9);
+  for (const [lx, lz] of [[-6.3, 4.2], [6.3, 4.2]]) { P('kk_lamp_standing', lx, lz, 0, 0.8, fl); circ(x + lx, z + lz, 0.35); }
+  for (const lx of [-2.4, -1.2, 0, 1.2, 2.4]) P('kk_pillow_A', lx, -3.7, 0, 1.3, fl + 0.1);
+  P('kk_table_small', 5.4, -3.6, 0, 0.9, fl); P('kk_chair_A_wood', 5.4, -2.7, Math.PI, 0.9, fl); circ(x + 5.4, z - 3.4, 0.6);
+}
 function zoneSpawn(B, r, scene) {
   welcomeArches(B, scene);
+  danceHall(B, scene);
   const { x, z } = SPAWN;
   model('thai_sala', x - 8, z - 16, Math.PI / 2, 1.4);   // north of the road hub, between the wat and palace roads
   model('thai_sala', x + 8, z - 16, -Math.PI / 2, 1.4);
@@ -648,6 +700,7 @@ function flatness(x, z) {
   let f = 1;
   if (inRice(x, z, 10)) return 0;
   for (const zn of ZONES) { const d = Math.hypot(x - zn.x, z - zn.z) - zn.r * 0.95; if (d < 30) f = Math.min(f, THREE.MathUtils.smoothstep(d, 0, 30)); }
+  const dd = Math.hypot(x - DANCE.x, z - DANCE.z) - 10; f = Math.min(f, THREE.MathUtils.smoothstep(dd, 0, 12));   // flat ground under the dance hall
   const ds = Math.hypot(x - SPAWN.x, z - SPAWN.z) - 26; f = Math.min(f, THREE.MathUtils.smoothstep(ds, 0, 20));
   for (const { a, b, w } of PATHS) { const d = distSeg(x, z, a, b) - w / 2 - 1; if (d < 14) f = Math.min(f, THREE.MathUtils.smoothstep(d, 0, 14)); }
   if (z > WALL_Z - 30) f = Math.min(f, THREE.MathUtils.smoothstep(WALL_Z - z, 8, 30));
@@ -663,6 +716,7 @@ function grassMask(x, z) {
 function bakeAll() {
   bakeTerrain({ flatness, grassMask, riverX, half: HALF });
   for (const c of colliders) c.r !== undefined ? stampMask(c.x, c.z, c.r + 0.3) : stampBox(c.x, c.z, c.hw + 0.4, c.hd + 0.4);
+  for (const p of PLATFORMS) stampBox(p.x, p.z, p.hw + 0.5, p.hd + 0.5);   // no grass through floors
   finalizeMask();
 }
 function buildWater(scene) {
@@ -869,7 +923,7 @@ export function distSeg(x, z, a, b) {
   return Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t);
 }
 function scatterTrees(B, r) {
-  const keepOut = [[SPAWN.x, SPAWN.z, 22], [ZONES[0].x, ZONES[0].z, 50], [ZONES[1].x, ZONES[1].z, 64], [ZONES[2].x, ZONES[2].z - 2, 36], [ZONES[4].x + 8, ZONES[4].z, 26], [ZONES[5].x, WALL_Z - 12, 24], [ZONES[3].x + 16, ZONES[3].z + 18, 17], [ZONES[3].x - 4, ZONES[3].z - 10, 20]];
+  const keepOut = [[SPAWN.x, SPAWN.z, 22], [ZONES[0].x, ZONES[0].z, 50], [ZONES[1].x, ZONES[1].z, 64], [ZONES[2].x, ZONES[2].z - 2, 36], [ZONES[4].x + 8, ZONES[4].z, 26], [ZONES[5].x, WALL_Z - 12, 24], [ZONES[3].x + 16, ZONES[3].z + 18, 17], [ZONES[3].x - 4, ZONES[3].z - 10, 20], [DANCE.x, DANCE.z, 14]];
   const ok = (x, z) => x > CITY.w + 6 && z > CITY.n + 6 && !inRice(x, z, 3) && !isBlockedWater(x, z) && Math.abs(x - riverX(z)) > 17 && !keepOut.some(([a, b, rr]) => Math.hypot(x - a, z - b) < rr) && !PATHS.some(({ a, b, w }) => distSeg(x, z, a, b) < w + 2) && z < WALL_Z - 5;
   let n = 0;
   for (let i = 0; i < 9000 && n < (scatterTrees.max || 380); i++) {
@@ -897,7 +951,7 @@ export function buildWorld(scene, { low = false } = {}) {
   buildBoats(scene);
   buildScatter(scene, r);
   B.build(scene);
-  for (const m of MODELS) { const o = prop(m.name); if (!o) continue; o.traverse((c) => { if (c.isMesh) c.material.side = THREE.DoubleSide; }); o.position.set(m.x, groundHeight(m.x, m.z), m.z); o.rotation.y = m.ry; o.scale.setScalar(m.sc); scene.add(o); }
+  for (const m of MODELS) { const o = prop(m.name); if (!o) continue; o.traverse((c) => { if (c.isMesh) c.material.side = THREE.DoubleSide; }); o.position.set(m.x, m.y ?? groundHeight(m.x, m.z), m.z); o.rotation.y = m.ry; o.scale.setScalar(m.sc); scene.add(o); }
   const npcs = [
     [ZONES[1].x - 4, ZONES[1].z + 44, 0, 'guard'], [ZONES[1].x + 4, ZONES[1].z + 44, 0, 'guard'], [ZONES[1].x - 6, ZONES[1].z + 1, 0, 'guard'], [ZONES[1].x + 6, ZONES[1].z + 1, 0, 'guard'],
     [ZONES[5].x - 8, WALL_Z - 6, Math.PI, 'guard'], [ZONES[5].x + 8, WALL_Z - 6, Math.PI, 'guard'],

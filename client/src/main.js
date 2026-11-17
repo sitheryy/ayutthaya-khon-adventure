@@ -14,15 +14,12 @@ import { Controls } from './controls.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
-const TOUCH = matchMedia('(pointer: coarse)').matches;
-const LOW = params.has('low') || (TOUCH && Math.min(screen.width, screen.height) < 500);
-const LIGHT = LOW || TOUCH;   // phones + tablets: no bloom, smaller shadow map
+const LOW = params.has('low') || (matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 500);
 
 // ---------- renderer / scene ----------
 const canvas = $('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: !LOW, powerPreference: 'high-performance' });
-let dpr = Math.min(devicePixelRatio, LOW ? 1.25 : TOUCH ? 1.5 : 1.75);
-renderer.setPixelRatio(dpr);
+renderer.setPixelRatio(Math.min(devicePixelRatio, LOW ? 1.25 : 1.75));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.toneMapping = THREE.NeutralToneMapping;
@@ -35,7 +32,7 @@ const camera = new THREE.PerspectiveCamera(55, 1, 0.3, 2000);
 scene.add(new THREE.HemisphereLight('#aab4ff', '#86a86a', 1.55));
 const sun = new THREE.DirectionalLight('#ffcf98', 2.4);
 sun.castShadow = true;
-sun.shadow.mapSize.set(LIGHT ? 1024 : 2048, LIGHT ? 1024 : 2048);
+sun.shadow.mapSize.set(LOW ? 1024 : 2048, LOW ? 1024 : 2048);
 Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 1, far: 260 });
 sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.04; sun.shadow.radius = 3;
 scene.add(sun, sun.target);
@@ -255,7 +252,7 @@ function resize() {
 }
 // bloom (desktop): glints on water, gold roofs, sun
 let composer = null, tilt = null, bloomPass = null;
-if (!LIGHT && !params.has('nobloom')) {
+if (!LOW && !params.has('nobloom')) {
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
   composer.addPass((bloomPass = new UnrealBloomPass(new THREE.Vector2(512, 512), 0.38, 0.55, 0.95)));
@@ -265,7 +262,7 @@ if (!LIGHT && !params.has('nobloom')) {
 addEventListener('resize', resize); resize();
 
 const clock = new THREE.Timer();
-let fpsAcc = 0, fpsN = 0, running = false, adA = 0, adN = 0;
+let fpsAcc = 0, fpsN = 0, running = false;
 const showFps = params.has('debug');
 if (showFps) $('fps').classList.remove('hidden');
 function frame() {
@@ -278,11 +275,6 @@ function frame() {
   for (const fn of animated) fn(t, dt);
   composer ? composer.render(dt) : renderer.render(scene, camera);
   if (showFps) { fpsAcc += dt; fpsN++; if (fpsAcc > 0.5) { $('fps').textContent = `${Math.round(fpsN / fpsAcc)} fps · ${renderer.info.render.calls} calls · ${(renderer.info.render.triangles / 1000) | 0}k tris`; fpsAcc = fpsN = 0; } }
-  // adaptive resolution: drop render scale when frames are slow, raise it back when there is headroom
-  adA += dt; adN++;
-  if (adA > 2) { const fps = adN / adA; adA = adN = 0;
-    const nd = fps < 45 ? Math.max(0.75, dpr - 0.25) : fps > 57 ? Math.min(devicePixelRatio, LOW ? 1.25 : TOUCH ? 1.5 : 1.75, dpr + 0.125) : dpr;
-    if (nd !== dpr) { dpr = nd; renderer.setPixelRatio(dpr); resize(); } }
   requestAnimationFrame(frame);
 }
 drawMapBase();
