@@ -62,7 +62,8 @@ export class Controls {
     const tend = (e) => { if (tid !== null && find(e.changedTouches)) { tid = null; this.joy.x = this.joy.y = 0; knob.style.transform = ''; } };
     addEventListener('touchend', tend); addEventListener('touchcancel', tend);
     const jb = document.getElementById('btn-jump'); jb.addEventListener('pointerdown', (e) => { e.preventDefault(); this.jumpQueued = true; }); jb.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
-    document.getElementById('btn-act').addEventListener('pointerdown', (e) => { e.preventDefault(); this.actQueued = true; });
+    // the on-screen prompts (open chest / ride elephant) are the action button
+    ['prompt', 'prompt-ride'].forEach((id) => document.getElementById(id).addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.actQueued = true; }));
   }
 
   // returns {x: right, y: forward, run}

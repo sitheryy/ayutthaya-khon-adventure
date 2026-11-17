@@ -78,7 +78,7 @@ function attachWand() {
 }
 
 // ---------- detector ----------
-const playing = () => !st.online || net.phase === 'playing';
+const playing = () => (st.online || st.gated ? net.phase === 'playing' : true);   // teacher's own hunt also waits for START
 function nearest() {
   if (!playing()) return null;
   let best = null;
@@ -170,8 +170,8 @@ function finish(c, right) {
 function updateHud() { $('hud-score').textContent = st.score; $('hud-chests').textContent = st.found; $('hud-total').textContent = st.total; }
 
 // ---------- entry ----------
-export async function startTreasureHunt({ online, seed = 'OFFLINE' }) {
-  st.online = online;
+export async function startTreasureHunt({ online, seed = 'OFFLINE', gated = false }) {
+  st.online = online; st.gated = gated;
   if (online) {
     net.on('welcome', (m) => { if (m.chests) setChests(m.chests); if (m.me) { st.score = m.me.score; st.found = m.me.found; } st.total = m.total; updateHud(); });
     if (net.welcome?.chests) setChests(net.welcome.chests);

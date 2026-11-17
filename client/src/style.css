@@ -135,3 +135,8 @@ html:fullscreen #hud-tl, html:-webkit-full-screen #hud-tl { top: 70px; }
 html:fullscreen body.touch #net-badge, html:-webkit-full-screen body.touch #net-badge { top: 168px; }
 
 #prompt-ride { position: absolute; bottom: 84px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.6); padding: 8px 18px; border-radius: 999px; font-size: 16px; border: 2px solid var(--gold); }
+
+#prompt, #prompt-ride { pointer-events: auto; cursor: pointer; user-select: none; }
+body.touch #prompt, body.touch #prompt-ride { font-size: 22px; padding: 14px 30px; background: rgba(60,30,8,.85); box-shadow: 0 0 18px rgba(255,210,90,.6); }
+.k-touch { display: none; } body.touch .k-touch { display: inline; } body.touch .k-key { display: none; }
+#tpanel { top: calc(220px + env(safe-area-inset-top)); max-height: calc(100vh - 230px); }

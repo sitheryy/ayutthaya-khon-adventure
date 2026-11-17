@@ -33,7 +33,7 @@ tform.addEventListener('submit', async (e) => {
   startPlaying({ name: 'คุณครู', no: '-', cls: 'ครู' });
   hookNet();
   (await import('./teacher.js')).startTeacher(r.token);
-  (await import('./treasure.js')).startTreasureHunt({ online: false, seed: 'TEACHER' });   // teacher plays too (own chests, not on the leaderboard)
+  (await import('./treasure.js')).startTreasureHunt({ online: false, seed: 'TEACHER', gated: true });   // teacher plays too (own chests, not on the leaderboard)
 });
 
 if (new URLSearchParams(location.search).has('autoplay')) { form.name.value ||= 'ทดสอบ ระบบ'; form.no.value ||= '1'; form.cls.value ||= 'ม.3/1'; form.requestSubmit(); }

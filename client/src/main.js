@@ -131,7 +131,7 @@ function updatePlayer(dt) {
   if (me.y <= gh) { me.y = gh; me.vy = 0; me.grounded = true; } else if (me.y - gh > 0.05) me.grounded = false;
   if (controls.takeAct() && !game.frozen && !rideToggle()) game.onAct?.();
   $('prompt-ride').classList.toggle('hidden', !(me.ride >= 0 || (nearestElephant(me.x, me.z, 5) >= 0 && $('prompt').classList.contains('hidden'))));
-  $('prompt-ride').innerHTML = me.ride >= 0 ? 'กด <b>E</b> / ✋ เพื่อลงจากช้าง' : 'กด <b>E</b> / ✋ เพื่อขี่ช้าง 🐘';
+  $('prompt-ride').innerHTML = (controls.touch ? '👆 แตะเพื่อ' : 'กด <b>E</b> เพื่อ') + (me.ride >= 0 ? 'ลงจากช้าง' : 'ขี่ช้าง 🐘');
   if (me.ride >= 0) {
     setElephant(me.ride, me.x, me.z, me.face, me.speed, dt);
     if (avatar) { avatar.root.position.set(me.x, me.y + SEAT, me.z); avatar.root.rotation.y = me.face; avatar.update(dt); }
@@ -158,7 +158,7 @@ function rideToggle() {
   const e = elephants[i]; if (e.remote && performance.now() - e.remote < 1500) { toast('มีคนขี่ช้างตัวนี้อยู่แล้ว', 1500); return true; }
   me.ride = i; PR = 1.9; e.rider = 'me'; me.x = e.x; me.z = e.z; me.face = e.ry; me.y = groundHeight(me.x, me.z); me.vy = 0;
   if (avatar) { avatar.play('Sit_Floor_Idle', 0.2); avatar.locked = true; }
-  toast('🐘 ขี่ช้างแล้ว! กด E / ✋ อีกครั้งเพื่อลง', 2200); return true;
+  toast('🐘 ขี่ช้างแล้ว! กดปุ่มกลางจออีกครั้งเพื่อลง', 2200); return true;
 }
 export function teleport(x, z) { if (me.ride >= 0) rideToggle(); me.x = x; me.z = z; me.y = groundHeight(x, z); me.vy = 0; }
 
