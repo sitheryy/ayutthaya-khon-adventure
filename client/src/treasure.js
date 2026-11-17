@@ -108,7 +108,7 @@ function detector(dt, t) {
   const interval = 0.09 + Math.pow(k, 1.3) * 1.5;
   const hue = Math.round(210 * k);   // far = blue, mid = green/yellow, near = red
   gem.style.setProperty('--h', hue);
-  txt.textContent = `${d < 8 ? 'ใกล้มาก! ✨' : d < 22 ? 'สัญญาณแรง' : d < 45 ? 'สัญญาณปานกลาง' : 'สัญญาณอ่อน'} · ${Math.round(d)} ม.`;
+  txt.textContent = d < 45 ? `${d < 8 ? 'ใกล้มาก! ✨' : d < 22 ? 'สัญญาณแรง' : 'สัญญาณปานกลาง'} · ${Math.round(d)} ม.` : 'สัญญาณอ่อน';   // weak signal: no distance
   if (wandGem) { const c = new THREE.Color(`hsl(${hue},100%,65%)`); wandGem.material.color.copy(c); wandGem.material.emissive.setHSL(hue / 360, 1, 0.5); wandGem.userData.halo.material.color.copy(c); }
   const ang = Math.atan2(n.c.x - me.x, n.c.z - me.z) - (controls.yaw + Math.PI);
   arrow.style.transform = `rotate(${-ang}rad)`; arrow.style.opacity = d < 45 ? 1 : 0.35;
