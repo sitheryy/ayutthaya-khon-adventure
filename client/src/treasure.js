@@ -3,7 +3,7 @@
 // Online: the server owns chest positions, questions, answers and scores. Offline: same rules, run locally.
 import * as THREE from 'three';
 import { me, game, scene, controls, toast, beep, audio } from './main.js';
-import { colliders, isBlockedWater, CITY, SPAWN, riverX, groundHeight, pathClear, rng, animated, DANCE } from './world.js';
+import { colliders, ZONES, isBlockedWater, CITY, SPAWN, riverX, groundHeight, pathClear, rng, animated, DANCE } from './world.js';
 import { prop, makeCharacter } from './models.js';
 import { makeNameTag } from './character.js';
 import { SEAT } from './elephant.js';
@@ -17,18 +17,24 @@ const st = { chests: [], score: 0, found: 0, total: N_CHESTS, bank: [], used: ne
 const hash = (s) => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7);
 const blocked = (x, z, pad) => colliders.some((c) => (c.r !== undefined ? Math.hypot(x - c.x, z - c.z) < c.r + pad : Math.abs(x - c.x) < c.hw + pad && Math.abs(z - c.z) < c.hd + pad));
 
-function freeSpot(r, avoid = []) {
+function freeSpot(r, avoid = [], zn = null) {   // zn: pick inside that zone's circle; null result if the zone has no room
   for (let i = 0; i < 500; i++) {
-    const x = CITY.w + 10 + r() * (riverX(0) - 20 - CITY.w - 10), z = CITY.n + 10 + r() * (CITY.s - CITY.n - 20);
+    let x = CITY.w + 10 + r() * (riverX(0) - 20 - CITY.w - 10), z = CITY.n + 10 + r() * (CITY.s - CITY.n - 20);
+    if (zn) { const a = r() * 6.283, d = Math.sqrt(r()) * zn.r * 0.85; x = zn.x + Math.cos(a) * d; z = zn.z + Math.sin(a) * d; if (x < CITY.w + 10 || x > riverX(0) - 10 || z < CITY.n + 10 || z > CITY.s - 10) continue; }
     if (Math.hypot(x - SPAWN.x, z - SPAWN.z) < 20 || isBlockedWater(x, z) || !pathClear(x, z, 0.8) || blocked(x, z, 1.6)) continue;
     if (avoid.some(([ax, az]) => Math.hypot(x - ax, z - az) < 15)) continue;
     if (Math.abs(groundHeight(x, z)) > 1.5) continue;
     return [x, z];
   }
-  return [SPAWN.x + 30, SPAWN.z + 10];
+  return zn ? null : [SPAWN.x + 30, SPAWN.z + 10];
 }
 // valid hiding spots spread over the city (the teacher's client sends these to the server on START)
-export function generateSpots(n = 48) { const r = Math.random, out = []; for (let i = 0; i < n; i++) out.push(freeSpot(r, out).map((v) => +v.toFixed(1))); return out; }
+// 8 per zone, tagged [x, z, zoneIndex] so the server can put 2 chests in each zone
+export function generateSpots(per = 8) {
+  const r = Math.random, out = [];
+  ZONES.forEach((zn, zi) => { const mine = []; for (let i = 0; i < per; i++) { const p = freeSpot(r, mine, zn); if (p) { mine.push(p); out.push([+p[0].toFixed(1), +p[1].toFixed(1), zi]); } } });
+  return out;
+}
 
 function glowSprite(color, size) {
   const c = document.createElement('canvas'); c.width = c.height = 64;
@@ -248,7 +254,7 @@ export async function startTreasureHunt({ online, seed = 'OFFLINE', gated = fals
     try { st.bank = (await (await fetch(import.meta.env.BASE_URL + 'questions.json')).json()).questions; }
     catch { st.bank = [{ q: 'โขนนิยมแสดงเรื่องใด', choices: ['รามเกียรติ์', 'อิเหนา', 'พระอภัยมณี', 'ขุนช้างขุนแผน'], answer: 0, explain: '', points: 100 }]; }
     const r = rng(hash(seed)), list = [];
-    for (let i = 0; i < N_CHESTS; i++) { const [x, z] = freeSpot(r, list.map((c) => [c.x, c.z])); list.push({ x, z, found: false }); }
+    for (let i = 0; i < N_CHESTS; i++) { const av = list.map((c) => [c.x, c.z]), [x, z] = freeSpot(r, av, ZONES[i % ZONES.length]) || freeSpot(r, av); list.push({ x, z, found: false }); }
     setChests(list);
   }
   animated.push((t, dt) => { if (playing() && net.phase !== 'paused') st.secs += dt; });   // time spent hunting (pauses not counted)

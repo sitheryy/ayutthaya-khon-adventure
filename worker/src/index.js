@@ -96,7 +96,7 @@ export class Room {
     if (this.dirtyRoster || this.tickN % 8 === 0) { this.dirtyRoster = false; this.all({ t: 'roster', list: [...this.players.values()].map((p) => this.publicPlayer(p)) }, (m) => m.role === 'teacher'); }
   }
 
-  newChests(p) { p.chests = this.layout.map((c) => ({ x: c.x, z: c.z, found: false })); p.used = []; }
+  newChests(p) { p.chests = this.layout.map((c) => ({ x: c.x, z: c.z, zn: c.zn, found: false })); p.used = []; }
   chestView(p) { return (p.chests || []).map((c) => ({ x: c.x, z: c.z, found: c.found })); }
 
   async onMessage(ws, raw) {
@@ -168,7 +168,7 @@ export class Room {
         const q = this.bank[pend.qi], c = p.chests[pend.chest], late = Date.now() - pend.t > (TIME_LIMIT + 3) * 1000, right = !late && m.choice === q.answer;
         let pts = 0;
         if (right) { pts = POINT; p.score += pts; p.found++; p.right++; c.found = true; }
-        else { p.wrong++; pts = -Math.min(PENALTY, p.score); p.score += pts; const spot = this.pickSpot(p); if (spot) { c.x = spot.x; c.z = spot.z; } }
+        else { p.wrong++; pts = -Math.min(PENALTY, p.score); p.score += pts; const spot = this.pickSpot(p, c.zn); if (spot) { c.x = spot.x; c.z = spot.z; } }
         await this.save(p); this.dirtyRoster = true;
         return this.send(ws, { t: 'result', chest: pend.chest, right, timeout: late || m.choice < 0, answer: q.answer, explain: q.explain || '', points: pts, score: p.score, found: p.found, chestState: { x: c.x, z: c.z, found: c.found } });
       }
@@ -190,9 +190,8 @@ export class Room {
       }
       if (m.c === 'start') {
         if (Array.isArray(m.spots) && m.spots.length >= N_CHESTS) {
-          this.pool = m.spots.slice(0, 200).map((s) => ({ x: +s[0], z: +s[1] })).filter((s) => Number.isFinite(s.x) && Number.isFinite(s.z));
-          const shuffled = [...this.pool].sort(() => Math.random() - 0.5);
-          this.layout = []; for (const s of shuffled) { if (this.layout.length >= N_CHESTS) break; if (this.layout.every((o) => Math.hypot(o.x - s.x, o.z - s.z) > 20)) this.layout.push(s); }
+          this.pool = m.spots.slice(0, 200).map((s) => ({ x: +s[0], z: +s[1], zn: s[2] | 0 })).filter((s) => Number.isFinite(s.x) && Number.isFinite(s.z));
+          this.layout = this.spreadLayout();
           await this.ctx.storage.put({ layout: this.layout, pool: this.pool });
         }
         if (m.reset !== false) for (const p of this.players.values()) { p.score = 0; p.found = 0; p.right = 0; p.wrong = 0; p.hint = false; this.newChests(p); await this.save(p); }
@@ -218,9 +217,19 @@ export class Room {
     }
   }
 
-  pickSpot(p) {
+  // N_CHESTS spread evenly over the zones (12 chests / 6 zones = 2 each), >20 m apart; leftovers come from any zone
+  spreadLayout() {
+    const rnd = () => Math.random() - 0.5, zones = [...new Set(this.pool.map((s) => s.zn))], per = Math.ceil(N_CHESTS / Math.max(1, zones.length)), out = [];
+    const ok = (s) => out.every((o) => Math.hypot(o.x - s.x, o.z - s.z) > 20);
+    for (const zn of zones) { let n = 0; for (const s of this.pool.filter((q) => q.zn === zn).sort(rnd)) { if (n >= per || out.length >= N_CHESTS) break; if (ok(s)) { out.push(s); n++; } } }
+    for (const s of [...this.pool].sort(rnd)) { if (out.length >= N_CHESTS) break; if (!out.includes(s) && ok(s)) out.push(s); }
+    return out;
+  }
+  // a wrong answer moves the chest to another spot in the same zone (any zone if it has no room)
+  pickSpot(p, zn) {
     const taken = p.chests.filter((c) => !c.found);
-    const opts = this.pool.filter((s) => taken.every((c) => Math.hypot(c.x - s.x, c.z - s.z) > 15));
+    const free = this.pool.filter((s) => taken.every((c) => Math.hypot(c.x - s.x, c.z - s.z) > 15));
+    const same = free.filter((s) => s.zn === zn), opts = same.length ? same : free;
     return opts[Math.floor(Math.random() * opts.length)] || null;
   }
   leaderboard() { return [...this.players.values()].sort((a, b) => b.score - a.score).map((p) => ({ name: p.name, no: p.no, cls: p.cls, score: p.score, found: p.found, right: p.right, wrong: p.wrong })); }

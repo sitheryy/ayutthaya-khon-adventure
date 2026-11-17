@@ -32,12 +32,13 @@ T.send({ t: 'show', on: false }); await sleep(400); B.inbox.length = 0; tl = awa
 T.send({ t: 'show', on: true }); await sleep(300);
 
 // start with a spot pool -> each student gets 12 chests
-const spots = Array.from({ length: 48 }, (_, i) => [(i % 8) * 25 - 90, Math.floor(i / 8) * 25 - 70]);
+const spots = Array.from({ length: 48 }, (_, i) => [(i % 8) * 25 - 90, Math.floor(i / 8) * 25 - 70, Math.floor(i / 8)]);   // row = zone
 A.send({ t: 'hint' }); assert.equal((await A.wait('hint')).ok, false, 'no guide arrow before START');
 T.send({ t: 'cmd', c: 'start', spots });
 assert.equal((await A.wait('countdown')).kind, 'start', '3-2-1 countdown first');
 assert.equal((await A.wait('phase', 6000)).phase, 'playing');
 const ch = await A.wait('chests'); assert.equal(ch.chests.length, 12, '12 chests');
+const perRow = {}; ch.chests.forEach((c) => { const r = Math.round((c.z + 70) / 25); perRow[r] = (perRow[r] || 0) + 1; }); assert.ok(Object.values(perRow).every((n) => n === 2) && Object.keys(perRow).length === 6, 'chests spread 2 per zone: ' + JSON.stringify(perRow));
 
 // opening from far away is refused; from close gets a question without the answer
 A.send({ t: 'open', chest: 0 }); assert.match((await A.wait('notice')).msg, /ใกล้/);

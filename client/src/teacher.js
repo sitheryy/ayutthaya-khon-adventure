@@ -32,7 +32,7 @@ export function startTeacher(token) {
     if (c === 'toggle') c = net.phase === 'paused' ? 'resume' : 'pause';
     if (c === 'end' && !confirmBox('จบเกมสำหรับนักเรียนทุกคน?')) return;
     if (c === 'start' && net.phase === 'playing' && !confirmBox('เริ่มรอบใหม่? คะแนนจะเริ่มนับใหม่')) return;
-    net.send(c === 'start' ? { t: 'cmd', c, spots: generateSpots(48) } : { t: 'cmd', c });
+    net.send(c === 'start' ? { t: 'cmd', c, spots: generateSpots(8) } : { t: 'cmd', c });
     toast({ start: '⏳ นับถอยหลังเริ่มเกม...', pause: '⏸ หยุดการเดินของนักเรียน', resume: '▶ ให้นักเรียนเดินต่อ', summon: '📣 เรียกนักเรียนมารวมที่ลานกลาง', end: '⏳ นับถอยหลังจบเกม...' }[c], 1800);
   }));
   const send = () => { const t = $('tp-msg').value.trim(); if (!t) return; net.send({ t: 'cmd', c: 'broadcast', text: t }); $('tp-msg').value = ''; };
