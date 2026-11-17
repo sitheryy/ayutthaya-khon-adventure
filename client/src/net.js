@@ -27,9 +27,9 @@ export function connect(join) {
     const done = (v) => { if (!settled) { settled = true; resolve(v); } };
     const open = () => {
       const ws = new WebSocket(SERVER.replace(/^http/, 'ws') + '/ws'); net.ws = ws;
-      const timer = setTimeout(() => { if (ws.readyState !== 1) { ws.close(); done(false); } }, 4000);
-      ws.onopen = () => { clearTimeout(timer); retry = 0; net.online = true; net.send({ t: 'join', ...net.join, sid: net.sid }); };
-      ws.onmessage = (e) => { const m = JSON.parse(e.data); handle(m); if (m.t === 'welcome') done(true); if (m.t === 'error' && m.msg === 'unauthorized') done(false); };
+      const timer = setTimeout(() => { if (!settled) { ws.close(); done(false); } }, 12000);   // slow tablets: main thread busy loading the world
+      ws.onopen = () => { retry = 0; net.online = true; net.send({ t: 'join', ...net.join, sid: net.sid }); };
+      ws.onmessage = (e) => { const m = JSON.parse(e.data); handle(m); if (m.t === 'welcome') { clearTimeout(timer); done(true); } if (m.t === 'error' && m.msg === 'unauthorized') done(false); };
       ws.onclose = (e) => {
         clearTimeout(timer); const was = net.online; net.online = false; setBadge();
         if (e.code === 4000 || e.code === 4001) { toast(e.code === 4001 ? 'ครูนำคุณออกจากห้อง' : 'มีการเข้าใช้ชื่อนี้จากอีกเครื่อง'); return; }

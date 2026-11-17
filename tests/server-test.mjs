@@ -46,7 +46,7 @@ assert.ok(q.q && q.choices.length === 4 && q.answer === undefined, 'question has
 
 // wrong answer: no points, chest moves; replay of the same answer is ignored
 const wrong = await (async () => { for (let k = 0; k < 4; k++) { A.send({ t: 'answer', chest: 0, choice: k }); const r = await A.wait('result'); return r; } })();
-if (!wrong.right) { assert.equal(wrong.points, 0); assert.ok(wrong.chestState.x !== c0.x || wrong.chestState.z !== c0.z, 'chest relocated'); }
+if (!wrong.right) { assert.ok(wrong.points <= 0, 'wrong answer: penalty'); assert.ok(wrong.chestState.x !== c0.x || wrong.chestState.z !== c0.z, 'chest relocated'); }
 A.send({ t: 'answer', chest: 0, choice: wrong.answer }); await sleep(200); assert.ok(!A.inbox.some((m) => m.t === 'result'), 'no double claim');
 
 // correct answer path

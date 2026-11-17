@@ -119,20 +119,30 @@ function showQuiz(q, onPick) {
     box.appendChild(b);
   });
   $('quiz').classList.remove('hidden');
+  // 30 s answer clock: time out = wrong answer (penalty, chest moves)
+  const limit = q.limit || 30, t0 = performance.now(), bar = $('quiz-timer').firstElementChild;
+  clearInterval(showQuiz.iv);
+  showQuiz.iv = setInterval(() => {
+    const left = Math.max(0, limit - (performance.now() - t0) / 1000);
+    $('quiz-sec').textContent = `⏱ ${Math.ceil(left)}`; bar.style.transform = `scaleX(${left / limit})`;
+    if (left <= 5 && left > 0 && Math.ceil(left) !== showQuiz.lastBeep) { showQuiz.lastBeep = Math.ceil(left); beep(990, 0.08, 0.06, 'square'); }
+    if (left <= 0 && !ok.dataset.done) { sel = -1; ok.onclick(); }
+  }, 100);
   ok.onclick = async () => {
     if (ok.dataset.done) return onPick(null);
+    clearInterval(showQuiz.iv);
     ok.disabled = true; ok.dataset.done = '1';
     const res = await onPick(sel);
     [...box.children].forEach((x, j) => { x.classList.toggle('right', j === res.answer); x.classList.toggle('wrong', j === sel && !res.right); });
     $('quiz-res').innerHTML = res.right
       ? `<b>✅ ถูกต้อง! +${res.points} คะแนน</b><br>${res.explain || ''}`
-      : `<b>❌ ยังไม่ถูก</b> คำตอบคือ “${q.choices[res.answer]}”<br>${res.explain || ''}<br><i>หีบสมบัติหนีไปซ่อนที่ใหม่แล้ว ลองตามหาอีกครั้ง!</i>`;
+      : `<b>${sel < 0 ? '⏰ หมดเวลา!' : '❌ ยังไม่ถูก'} ${res.points < 0 ? res.points + ' คะแนน' : ''}</b> คำตอบคือ “${q.choices[res.answer]}”<br>${res.explain || ''}<br><i>หีบสมบัติหนีไปซ่อนที่ใหม่แล้ว ลองตามหาอีกครั้ง!</i>`;
     $('quiz-res').classList.remove('hidden');
     if (res.right) { beep(880, 0.15, 0.08, 'triangle'); setTimeout(() => beep(1320, 0.2, 0.08, 'triangle'), 140); } else beep(220, 0.3, 0.07, 'sawtooth');
     ok.textContent = 'เล่นต่อ'; ok.disabled = false;
   };
 }
-function closeQuiz() { $('quiz').classList.add('hidden'); st.busy = false; if (net.phase !== 'paused' && net.phase !== 'ended') game.frozen = false; }
+function closeQuiz() { clearInterval(showQuiz.iv); $('quiz').classList.add('hidden'); st.busy = false; if (net.phase !== 'paused' && net.phase !== 'ended') game.frozen = false; }
 
 function openChest(n) {
   st.busy = true; game.frozen = true; playChest(n.c, true); audio();
@@ -142,8 +152,9 @@ function openChest(n) {
   st.used.add(qi); const q = st.bank[qi];
   setTimeout(() => showQuiz(q, (sel) => {
     if (sel === null) { finish(n.c, n.c.found); return; }
-    const right = sel === q.answer, points = right ? (q.points || 100) + FIND_BONUS : 0;
-    if (right) { st.score += points; st.found++; n.c.found = true; }
+    const right = sel === q.answer, points = right ? (q.points || 100) + FIND_BONUS : -Math.min(20, st.score);
+    if (right) { st.found++; n.c.found = true; }
+    st.score += points;
     updateHud(); return { right, answer: q.answer, explain: q.explain, points };
   }), 500);
 }

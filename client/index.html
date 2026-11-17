@@ -4,6 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="manifest" href="./manifest.json" />
 <meta name="theme-color" content="#3b2414" />
 <title>AYUTTHAYA KHON ADVENTURE</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -28,6 +31,7 @@
   <button id="btn-jump" class="round-btn">⤒</button>
   <button id="btn-act" class="round-btn">✋</button>
   <div id="fps" class="hidden"></div>
+  <button id="btn-fs" class="pill small">⛶ เต็มจอ</button>
 </div>
 
 <!-- Student login -->
@@ -74,7 +78,8 @@
 <div id="net-badge" class="pill small hidden"></div>
 <!-- Overlay messages -->
 <div id="quiz" class="hidden"><div class="panel quiz-card">
-  <div class="quiz-head">📜 คำถามจากหีบสมบัติ</div>
+  <div class="quiz-head">📜 คำถามจากหีบสมบัติ <span id="quiz-sec">30</span></div>
+  <div id="quiz-timer"><i></i></div>
   <div id="quiz-q"></div>
   <div id="quiz-opts"></div>
   <button id="quiz-ok" class="btn-gold" disabled>ยืนยันคำตอบ</button>

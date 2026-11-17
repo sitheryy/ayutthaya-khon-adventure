@@ -23,7 +23,7 @@ async function pbkdf2(password, salt) {
 }
 const rid = () => b64(crypto.getRandomValues(new Uint8Array(18))).replace(/[+/=]/g, '');
 const clean = (s, n) => String(s ?? '').replace(/[<>]/g, '').trim().slice(0, n);
-const N_CHESTS = 12, FIND_BONUS = 20, OPEN_RANGE = 4.5, MAX_PLAYERS = 50;
+const N_CHESTS = 12, FIND_BONUS = 20, PENALTY = 20, TIME_LIMIT = 30, OPEN_RANGE = 4.5, MAX_PLAYERS = 50;
 const SPAWN = { x: 0, z: 20 };
 
 export class Room {
@@ -135,19 +135,19 @@ export class Room {
         if (Math.hypot(c.x - p.x, c.z - p.z) > OPEN_RANGE) return this.send(ws, { t: 'notice', msg: 'เข้าไปใกล้หีบอีกนิด' });
         if (p.used.length >= this.bank.length) p.used = [];
         let qi; do qi = Math.floor(Math.random() * this.bank.length); while (p.used.includes(qi));
-        p.used.push(qi); p.pending = { chest: m.chest, qi };
+        p.used.push(qi); p.pending = { chest: m.chest, qi, t: Date.now() };
         const q = this.bank[qi];
-        return this.send(ws, { t: 'question', chest: m.chest, q: q.q, choices: q.choices });
+        return this.send(ws, { t: 'question', chest: m.chest, q: q.q, choices: q.choices, limit: TIME_LIMIT });
       }
       if (m.t === 'answer') {
         const pend = p.pending; if (!pend || pend.chest !== m.chest) return;
         p.pending = null;
-        const q = this.bank[pend.qi], c = p.chests[pend.chest], right = m.choice === q.answer;
+        const q = this.bank[pend.qi], c = p.chests[pend.chest], late = Date.now() - pend.t > (TIME_LIMIT + 3) * 1000, right = !late && m.choice === q.answer;
         let pts = 0;
         if (right) { pts = (q.points || 100) + FIND_BONUS; p.score += pts; p.found++; p.right++; c.found = true; }
-        else { p.wrong++; const spot = this.pickSpot(p); if (spot) { c.x = spot.x; c.z = spot.z; } }
+        else { p.wrong++; pts = -Math.min(PENALTY, p.score); p.score += pts; const spot = this.pickSpot(p); if (spot) { c.x = spot.x; c.z = spot.z; } }
         await this.save(p); this.dirtyRoster = true;
-        return this.send(ws, { t: 'result', chest: pend.chest, right, answer: q.answer, explain: q.explain || '', points: pts, score: p.score, found: p.found, chestState: { x: c.x, z: c.z, found: c.found } });
+        return this.send(ws, { t: 'result', chest: pend.chest, right, timeout: late || m.choice < 0, answer: q.answer, explain: q.explain || '', points: pts, score: p.score, found: p.found, chestState: { x: c.x, z: c.z, found: c.found } });
       }
       return;
     }

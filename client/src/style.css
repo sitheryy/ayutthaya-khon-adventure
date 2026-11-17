@@ -124,3 +124,8 @@ body.touch #toast { top: 16%; }
 #countdown.end { color: #ffb0a0; text-shadow: 0 6px 0 #7a2a1a, 0 0 40px rgba(255,90,60,.7); }
 #countdown.hidden { display: none; }
 @keyframes cd-pop { from { transform: scale(1.8); opacity: 0; } 25% { opacity: 1; } to { transform: scale(1); } }
+
+#btn-fs { position: absolute; top: calc(178px + env(safe-area-inset-top)); right: calc(14px + env(safe-area-inset-right)); pointer-events: auto; font: inherit; font-size: 14px; color: var(--cream); cursor: pointer; }
+#quiz-timer { height: 10px; border-radius: 6px; background: rgba(0,0,0,.25); overflow: hidden; margin: 4px 0 10px; }
+#quiz-timer i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #e74c3c, #f1c40f 40%, #2ecc71); transform-origin: left; }
+#quiz-sec { float: right; color: var(--gold); font-weight: 600; }

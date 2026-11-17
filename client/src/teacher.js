@@ -9,8 +9,6 @@ const PH = { lobby: 'รอเริ่มเกม', playing: '🟢 กำล�
 
 export function startTeacher(token) {
   $('tpanel').classList.remove('hidden');
-  $('detector').classList.add('hidden');
-  $('hud-tl').classList.add('hidden');
   game.isTeacher = true;
   const setPhase = (p) => { $('tp-phase').textContent = PH[p] || p; $('tp-toggle').textContent = p === 'paused' ? '▶ เดินต่อ' : '⏸ หยุดการเดิน'; $('tp-toggle').classList.toggle('on', p === 'paused'); };
   setPhase(net.phase);
