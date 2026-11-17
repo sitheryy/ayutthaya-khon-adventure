@@ -119,3 +119,8 @@ body.touch #net-badge { bottom: auto; top: 96px; }
 
 body.touch #prompt { bottom: 215px; }
 body.touch #toast { top: 16%; }
+
+#countdown { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 40; pointer-events: none; font-size: min(30vw, 220px); font-weight: 700; color: #ffe08a; text-shadow: 0 6px 0 #8a5a22, 0 0 40px rgba(255,200,80,.8); animation: cd-pop 1s ease-out; }
+#countdown.end { color: #ffb0a0; text-shadow: 0 6px 0 #7a2a1a, 0 0 40px rgba(255,90,60,.7); }
+#countdown.hidden { display: none; }
+@keyframes cd-pop { from { transform: scale(1.8); opacity: 0; } 25% { opacity: 1; } to { transform: scale(1); } }

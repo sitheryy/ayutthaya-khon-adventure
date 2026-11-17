@@ -152,6 +152,12 @@ export class Room {
 
     // ---------- teacher ----------
     if (m.t === 'cmd') {
+      if ((m.c === 'start' || m.c === 'end') && !m._go) {   // 3-2-1 countdown on every screen, then apply
+        if (this.countingDown) return;
+        this.countingDown = true; this.all({ t: 'countdown', kind: m.c, secs: 3 });
+        setTimeout(async () => { this.countingDown = false; try { await this.onMessage(ws, JSON.stringify({ ...m, _go: true })); } catch {} }, 3300);
+        return;
+      }
       if (m.c === 'start') {
         if (Array.isArray(m.spots) && m.spots.length >= N_CHESTS) {
           this.pool = m.spots.slice(0, 200).map((s) => ({ x: +s[0], z: +s[1] })).filter((s) => Number.isFinite(s.x) && Number.isFinite(s.z));

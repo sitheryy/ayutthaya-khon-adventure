@@ -81,6 +81,15 @@ function applyPhase(ph) {
   if (ph === 'paused') overlay('⏸ หยุดเกมชั่วคราว', 'รอครูสั่งเล่นต่อนะ');
   else if (ph !== 'ended') overlay(null);
 }
+function runCountdown(kind, secs = 3) {
+  const el = $('countdown'), end = kind === 'end'; let n = secs;
+  const tick = () => {
+    if (n > 0) { el.textContent = n; el.className = end ? 'end' : ''; beep(end ? 520 : 660, 0.14, 0.12, 'square'); n--; setTimeout(tick, 1000); }
+    else { el.textContent = end ? '⏹ จบเกม' : '🚀 เริ่ม!'; beep(end ? 330 : 1320, 0.5, 0.14, 'triangle'); setTimeout(() => el.classList.add('hidden'), 900); return; }
+    el.classList.remove('hidden'); el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+  };
+  tick();
+}
 function handle(m) {
   switch (m.t) {
     case 'welcome':
@@ -92,6 +101,7 @@ function handle(m) {
     case 'phase': applyPhase(m.phase); break;
     case 'summon': teleport(m.x, m.z); toast(m.text, 3500); beep(660, 0.2, 0.08, 'triangle'); break;
     case 'broadcast': toast(m.text, 5000); beep(880, 0.12, 0.08, 'triangle'); setTimeout(() => beep(1175, 0.18, 0.08, 'triangle'), 130); break;
+    case 'countdown': runCountdown(m.kind, m.secs); break;
     case 'notice': toast(m.msg, 2000); break;
     case 'leaderboard': if (net.role === 'student') showLeaderboard(m.rows); break;
   }

@@ -60,8 +60,7 @@
   <div class="tp-head">🎓 แผงควบคุมครู <span id="tp-phase" class="tp-phase">รอเริ่ม</span></div>
   <div class="tp-btns">
     <button data-c="start" class="tb go">▶ เริ่มเกม</button>
-    <button data-c="pause" class="tb">⏸ หยุดการเดิน</button>
-    <button data-c="resume" class="tb">▶ เดินต่อ</button>
+    <button id="tp-toggle" data-c="toggle" class="tb">⏸ หยุดการเดิน</button>
     <button data-c="summon" class="tb">📣 เรียกรวมที่ลานกลาง</button>
     <button data-c="end" class="tb stop">⏹ จบเกม</button>
     <button id="tp-fly" class="tb">✈️ โหมดบิน: ปิด</button>
@@ -82,6 +81,7 @@
 </div></div>
 <div id="overlay" class="hidden"><div class="panel big"><div id="overlay-title"></div><div id="overlay-body"></div></div></div>
 <div id="toast" class="hidden"></div>
+<div id="countdown" class="hidden"></div>
 
 <script type="module" src="/src/main.js"></script>
 </body>

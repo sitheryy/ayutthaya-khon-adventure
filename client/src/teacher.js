@@ -12,7 +12,7 @@ export function startTeacher(token) {
   $('detector').classList.add('hidden');
   $('hud-tl').classList.add('hidden');
   game.isTeacher = true;
-  const setPhase = (p) => { $('tp-phase').textContent = PH[p] || p; };
+  const setPhase = (p) => { $('tp-phase').textContent = PH[p] || p; $('tp-toggle').textContent = p === 'paused' ? '▶ เดินต่อ' : '⏸ หยุดการเดิน'; $('tp-toggle').classList.toggle('on', p === 'paused'); };
   setPhase(net.phase);
   net.on('phase', (m) => setPhase(m.phase));
   net.on('welcome', (m) => setPhase(m.phase));
@@ -30,11 +30,12 @@ export function startTeacher(token) {
     toast(`✈️ ไปหา ${r[1]}`, 1500);
   };
   $('tpanel').querySelectorAll('[data-c]').forEach((b) => (b.onclick = () => {
-    const c = b.dataset.c;
+    let c = b.dataset.c;
+    if (c === 'toggle') c = net.phase === 'paused' ? 'resume' : 'pause';
     if (c === 'end' && !confirmBox('จบเกมสำหรับนักเรียนทุกคน?')) return;
     if (c === 'start' && net.phase === 'playing' && !confirmBox('เริ่มรอบใหม่? คะแนนจะเริ่มนับใหม่')) return;
     net.send(c === 'start' ? { t: 'cmd', c, spots: generateSpots(48) } : { t: 'cmd', c });
-    toast({ start: '▶ เริ่มเกมแล้ว', pause: '⏸ หยุดการเดินของนักเรียน', resume: '▶ ให้นักเรียนเดินต่อ', summon: '📣 เรียกนักเรียนมารวมที่ลานกลาง', end: '⏹ จบเกม' }[c], 1800);
+    toast({ start: '⏳ นับถอยหลังเริ่มเกม...', pause: '⏸ หยุดการเดินของนักเรียน', resume: '▶ ให้นักเรียนเดินต่อ', summon: '📣 เรียกนักเรียนมารวมที่ลานกลาง', end: '⏳ นับถอยหลังจบเกม...' }[c], 1800);
   }));
   const send = () => { const t = $('tp-msg').value.trim(); if (!t) return; net.send({ t: 'cmd', c: 'broadcast', text: t }); $('tp-msg').value = ''; };
   $('tp-send').onclick = send; $('tp-msg').onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') send(); };
