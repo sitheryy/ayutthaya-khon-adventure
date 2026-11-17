@@ -1,0 +1,11 @@
+<!doctype html><html><body style="margin:0;background:#9ab7ff"><canvas id="c" style="width:100vw;height:100vh"></canvas><script type="module">
+import * as THREE from 'three';
+import { loadAssets, makeCharacter, studentLook, ROLE_LOOKS, makeKhon, prop } from './src/models.js';
+await loadAssets();
+const r=new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true}); r.setSize(innerWidth,innerHeight,false); r.toneMapping=THREE.ACESFilmicToneMapping;
+const s=new THREE.Scene(); s.background=new THREE.Color('#9ab7ff'); s.add(new THREE.HemisphereLight('#d6e6ff','#6f9a4a',1.25)); const d=new THREE.DirectionalLight('#fff1d6',2.3); d.position.set(3,6,5); s.add(d);
+const list=[...[0,1,2,3].map(i=>makeCharacter(studentLook(i))), ...Object.values(ROLE_LOOKS).map(l=>makeCharacter(l)), ...['hanuman','thotsakan','rama','sida'].map(makeKhon)];
+list.forEach((c,i)=>{c.root.position.set((i%6)*1.6-4,-(i/6|0)*2.2,0); s.add(c.root); c.update(0.4);});
+const ch=prop('Chest'); ch.position.set(5.5,-2.2,0); ch.scale.setScalar(0.8); s.add(ch);
+const cam=new THREE.PerspectiveCamera(35,innerWidth/innerHeight,0.1,100); cam.position.set(0.5,0,13); cam.lookAt(0.5,-1.4,0); r.render(s,cam); document.title='done';
+</script></body></html>

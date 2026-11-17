@@ -1,0 +1,16 @@
+name = "ayutthaya-khon"
+main = "src/index.js"
+compatibility_date = "2026-06-01"
+
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "Room"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
+
+[vars]
+# Default teacher password is only used to seed the hash on first run. Change it from the teacher panel.
+TEACHER_DEFAULT_PASSWORD = "310348"
+ALLOWED_ORIGINS = "*"

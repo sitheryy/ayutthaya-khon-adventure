@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#3b2414" />
+<title>AYUTTHAYA KHON ADVENTURE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="hud-tl">
+    <div class="pill score">⭐ คะแนน <b id="hud-score">0</b></div>
+    <div class="pill score">🧰 สมบัติ <b id="hud-chests">0</b> / <b id="hud-total">12</b></div>
+  </div>
+  <div id="zone-banner" class="panel"><div id="zone-name"></div><div id="zone-sub"></div></div>
+  <div id="minimap-wrap"><canvas id="minimap" width="300" height="300"></canvas><div class="north">N</div></div>
+  <div id="detector"><div id="det-gem"></div><div id="det-text">ไม้กายสิทธิ์</div></div>
+  <div id="prompt" class="hidden">กด <b>E</b> เพื่อเปิดหีบ</div>
+  <div id="joy"><div id="joy-knob"></div></div>
+  <button id="btn-jump" class="round-btn">⤒</button>
+  <button id="btn-act" class="round-btn">✋</button>
+  <div id="fps" class="hidden"></div>
+</div>
+
+<!-- Student login -->
+<div id="screen-login" class="screen">
+  <div class="card">
+    <div class="logo">
+      <div class="logo-en">AYUTTHAYA KHON ADVENTURE</div>
+      <div class="logo-th">ผจญภัยตามล่าสมบัติโขนกรุงศรีอยุธยา</div>
+    </div>
+    <form id="form-login" autocomplete="off">
+      <label>ชื่อ-นามสกุล<input name="name" required maxlength="40" placeholder="เช่น ด.ญ.ใจดี รักไทย" /></label>
+      <div class="row">
+        <label>เลขที่<input name="no" required inputmode="numeric" pattern="[0-9]{1,3}" maxlength="3" placeholder="12" /></label>
+        <label>ชั้นเรียน<input name="cls" required maxlength="10" placeholder="ม.3/1" /></label>
+      </div>
+      <button class="btn-gold" type="submit">เข้าสู่โลกผจญภัย</button>
+      <div id="login-err" class="err"></div>
+    </form>
+    <a class="teacher-link" href="#" id="to-teacher">🔒 สำหรับครู</a>
+    <form id="form-teacher" class="hidden" autocomplete="off">
+      <label>รหัสผ่านครู<input name="pw" type="password" required maxlength="40" inputmode="numeric" /></label>
+      <button class="btn-gold" type="submit">เข้าสู่แผงควบคุมครู</button>
+      <div id="teacher-err" class="err"></div>
+    </form>
+  </div>
+</div>
+
+<!-- Teacher control panel -->
+<div id="tpanel" class="hidden panel">
+  <div class="tp-head">🎓 แผงควบคุมครู <span id="tp-phase" class="tp-phase">รอเริ่ม</span></div>
+  <div class="tp-btns">
+    <button data-c="start" class="tb go">▶ เริ่มเกม</button>
+    <button data-c="pause" class="tb">⏸ หยุดการเดิน</button>
+    <button data-c="resume" class="tb">▶ เดินต่อ</button>
+    <button data-c="summon" class="tb">📣 เรียกรวมที่ลานกลาง</button>
+    <button data-c="end" class="tb stop">⏹ จบเกม</button>
+    <button id="tp-fly" class="tb">✈️ โหมดบิน: ปิด</button>
+  </div>
+  <div class="tp-row"><input id="tp-msg" maxlength="200" placeholder="พิมพ์ประกาศถึงนักเรียน..." /><button id="tp-send" class="tb">📢 ส่ง</button></div>
+  <div class="tp-sub">นักเรียน <b id="tp-count">0</b> คน · คลิกชื่อเพื่อบินไปหา</div>
+  <div class="tp-list"><table><thead><tr><th></th><th>ชื่อ</th><th>เลขที่</th><th>ชั้น</th><th>คะแนน</th><th>หีบ</th><th>✓</th><th>✗</th></tr></thead><tbody id="tp-rows"></tbody></table></div>
+  <div class="tp-row small"><button id="tp-lb" class="tb">🏆 ลีดเดอร์บอร์ด</button><button id="tp-clear" class="tb">🧹 ล้างคนออฟไลน์</button><button id="tp-pw" class="tb">🔑 เปลี่ยนรหัส</button><button id="tp-hide" class="tb">⇤ ย่อ</button></div>
+</div>
+<div id="net-badge" class="pill small hidden"></div>
+<!-- Overlay messages -->
+<div id="quiz" class="hidden"><div class="panel quiz-card">
+  <div class="quiz-head">📜 คำถามจากหีบสมบัติ</div>
+  <div id="quiz-q"></div>
+  <div id="quiz-opts"></div>
+  <button id="quiz-ok" class="btn-gold" disabled>ยืนยันคำตอบ</button>
+  <div id="quiz-res" class="hidden"></div>
+</div></div>
+<div id="overlay" class="hidden"><div class="panel big"><div id="overlay-title"></div><div id="overlay-body"></div></div></div>
+<div id="toast" class="hidden"></div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
