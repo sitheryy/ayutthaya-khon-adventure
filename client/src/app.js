@@ -38,3 +38,14 @@ tform.addEventListener('submit', async (e) => {
 });
 
 if (new URLSearchParams(location.search).has('autoplay')) { form.name.value ||= 'ทดสอบ ระบบ'; form.no.value ||= '1'; form.cls.value ||= 'ม.3/1'; form.requestSubmit(); }
+
+// ---------- auto-update: reload to the newest deploy, but only on the login screen (never mid-game) ----------
+async function checkUpdate() {
+  if (import.meta.env.DEV || !document.getElementById('screen-login') || document.getElementById('screen-login').classList.contains('hidden')) return;
+  try {
+    const { v } = await (await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' })).json();
+    if (v && v !== __BUILD__) location.replace(location.pathname + '?v=' + v);
+  } catch {}
+}
+checkUpdate();
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });

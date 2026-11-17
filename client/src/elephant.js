@@ -15,12 +15,44 @@ function part(g, geo, mat, x, y, z, o = {}) {
   if (o.rx) m.rotation.x = o.rx; if (o.rz) m.rotation.z = o.rz; if (o.ry) m.rotation.y = o.ry;
   if (o.s) m.scale.set(...o.s); m.castShadow = true; g.add(m); return m;
 }
+// The scanned model is one rigid mesh: cut its triangles into body + 4 legs (by position) so the legs can swing.
+// Model space: head toward +x, ground ~ y=-0.93, trunk hangs at x>0.9. Returns [FL, FR, BL, BR] hip pivots.
+const HIP_Y = -0.15;
+function splitLegs(root) {
+  let mesh = null; root.traverse((n) => { if (n.isMesh && !mesh && n.geometry.attributes.position.count > 1000) mesh = n; });
+  if (!mesh) return [];
+  const geo = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry, pos = geo.attributes.position;
+  const names = Object.keys(geo.attributes), buckets = Array.from({ length: 5 }, () => []);   // 0 body, 1 FL, 2 FR, 3 BL, 4 BR
+  for (let t = 0; t < pos.count; t += 3) {
+    let cx = 0, cy = 0, cz = 0;
+    for (let k = 0; k < 3; k++) { cx += pos.getX(t + k) / 3; cy += pos.getY(t + k) / 3; cz += pos.getZ(t + k) / 3; }
+    let b = 0;
+    if (cy < -0.2 && ((cx > 0.3 && cx < 0.9) || cx < -0.05)) b = (cx > 0 ? 1 : 3) + (cz > 0 ? 1 : 0);
+    buckets[b].push(t);
+  }
+  const parent = mesh.parent, legs = [];
+  buckets.forEach((tris, i) => {
+    const g = new THREE.BufferGeometry();
+    for (const n of names) {
+      const a = geo.attributes[n], s = a.itemSize, arr = new a.array.constructor(tris.length * 3 * s);
+      tris.forEach((t, j) => { for (let k = 0; k < 3; k++) for (let c = 0; c < s; c++) arr[(j * 3 + k) * s + c] = a.array[(t + k) * s + c]; });
+      g.setAttribute(n, new THREE.BufferAttribute(arr, s, a.normalized));
+    }
+    const m = new THREE.Mesh(g, mesh.material); m.castShadow = true;
+    if (i === 0) { m.position.copy(mesh.position); parent.add(m); return; }
+    const px = i <= 2 ? 0.6 : -0.5, pz = i % 2 ? -0.15 : 0.15, hip = new THREE.Group();   // odd i = left (z<0)
+    hip.position.set(px, HIP_Y, pz).add(mesh.position); g.translate(-px, -HIP_Y, -pz);
+    hip.add(m); parent.add(hip); legs.push(hip);
+  });
+  mesh.visible = false;
+  return legs;
+}
 function buildModel() {
   const o = prop('elephant');
   if (o) {   // "Low poly elephant" by MrEliptik (Sketchfab, CC-BY) + Thai royal trappings
     const g = new THREE.Group(), body = new THREE.Group();
     o.position.x = -0.39; const pivot = new THREE.Group(); pivot.add(o); pivot.rotation.y = HEAD_FIX; pivot.scale.setScalar(ELE_SCALE); body.add(pivot); g.add(body);
-    return { root: g, legs: [], head: body, trunk: body, model: true };
+    return { root: g, legs: splitLegs(o), head: body, trunk: body, model: true };
   }
   const g = new THREE.Group(), skin = M('#8d8792'), skinD = M('#6f6976'), red = M('#a8232a'), gold = M('#e0b040'), ivory = M('#f3ead2');
   part(g, new THREE.SphereGeometry(1, 16, 12), skin, 0, 2.0, 0, { s: [1.15, 1.0, 1.75] });                    // body (front is +z)
@@ -66,7 +98,7 @@ export function animateElephants(t, dt) {
   for (const e of elephants) {
     e.phase += dt * (e.speed > 0.3 ? 2 + e.speed * 0.6 : 0);
     const k = Math.min(1, e.speed / 4) * 0.45;
-    e.legs.forEach((l, j) => (l.rotation.x = Math.sin(e.phase + (j === 0 || j === 3 ? 0 : Math.PI)) * k));
+    e.legs.forEach((l, j) => { l.rotation[e.model ? 'z' : 'x'] = Math.sin(e.phase + (j === 0 || j === 3 ? 0 : Math.PI)) * k; });
     if (e.model) { e.head.position.y = Math.abs(Math.sin(e.phase)) * 0.08 * Math.min(1, e.speed / 3); e.head.rotation.z = Math.sin(e.phase) * 0.04 * Math.min(1, e.speed / 3) + Math.sin(t * 0.7) * 0.01; continue; }
     e.trunk.rotation.x = Math.sin(t * 1.3 + e.phase) * 0.12; e.head.rotation.z = Math.sin(t * 0.7) * 0.03;
   }
