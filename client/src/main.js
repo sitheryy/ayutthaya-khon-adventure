@@ -7,7 +7,9 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { flyingLeaves, windLines, tiltShiftPasses, fireflies } from './effects.js';
 import { updateCycle } from './cycle.js';
 import { buildLife } from './life.js';
-import { spawnElephants, nearestElephant, setElephant, animateElephants, elephants, SEAT } from './elephant.js';
+import { startAmbience, updateAmbience } from './ambience.js';
+import { spawnNaga } from './naga.js';
+import { spawnElephants, nearestElephant, setElephant, animateElephants, elephants, SEAT, wanderElephants, setAnchor, eleClock } from './elephant.js';
 import { CITY, SUN_DIR, buildWorld, buildSky, ZONES, SPAWN, HALF, WALL_Z, colliders, animated, uTime, groundHeight, isBlockedWater, zoneAt, riverX, PATHS, waters, surfaceAt } from './world.js';
 import { makeNameTag } from './character.js';
 import { loadAssets, makeCharacter, studentLook, STUDENT_LOOKS } from './models.js';
@@ -44,8 +46,9 @@ await document.fonts.load('600 58px Mitr').catch(() => {});
 await loadAssets((p) => (loginBtn.textContent = `กำลังโหลดโลก... ${Math.round(p * 100)}%`));
 buildSky(scene);
 const { grass } = buildWorld(scene, { low: LOW });
-spawnElephants(scene, [[14, 36, 0.6], [-18, 6, -2.2]]);   // two rideable royal elephants near the plaza
-animated.push(animateElephants);
+spawnElephants(scene, [[14, 36, 0.6], [-18, 6, -2.2]]);
+spawnNaga(scene, animated);   // big animated พญานาค circling the Himmapan pond   // two rideable royal elephants near the plaza
+animated.push(animateElephants); animated.push((t, dt) => wanderElephants(dt));
 const leaves = flyingLeaves(scene, uTime, LOW ? 50 : 110);
 windLines(scene, uTime, LOW ? 8 : 18);
 loginBtn.disabled = false; loginBtn.textContent = 'เข้าสู่โลกผจญภัย';
@@ -148,17 +151,31 @@ function updatePlayer(dt) {
 // E / ✋ near an elephant: climb on; again: climb off beside it. A chest in reach takes priority.
 function rideToggle() {
   if (me.ride >= 0) {
-    const e = elephants[me.ride]; me.ride = -1; PR = 0.45; e.rider = null;
+    const i = me.ride, e = elephants[i]; me.ride = -1; PR = 0.45; e.rider = null;
+    // the elephant carries on wandering from where it was left (online: the server tells everyone the new spot)
+    setAnchor(i, e.x, e.z, Date.now() + eleClock.skew); game.netRide?.(i, false, e.x, e.z);
     const sx = Math.cos(me.face) * 3.4, sz = -Math.sin(me.face) * 3.4; me.x += sx; me.z += sz; [me.x, me.z] = collide(me.x, me.z); me.y = groundHeight(me.x, me.z);
     if (avatar) { avatar.locked = false; avatar.play('Idle'); }
     return true;
   }
   if (!$('prompt').classList.contains('hidden')) return false;
   const i = nearestElephant(me.x, me.z, 5); if (i < 0) return false;
-  const e = elephants[i]; if (e.remote && performance.now() - e.remote < 1500) { toast('มีคนขี่ช้างตัวนี้อยู่แล้ว', 1500); return true; }
+  const e = elephants[i];
+  if (e.rider === 'other') { toast('🐘 มีคนขี่ช้างตัวนี้อยู่ รอให้เขาลงก่อนนะ', 2000); return true; }
+  if (game.netRide) { if (!rideToggle.wait) { rideToggle.wait = true; game.netRide(i, true); setTimeout(() => (rideToggle.wait = false), 3000); } return true; }   // server says yes/no
+  mountElephant(i); return true;
+}
+// server replies to a ride request
+game.rideResult = (m) => {
+  rideToggle.wait = false;
+  if (!m.on) return;
+  if (m.ok) mountElephant(m.i); else toast('🐘 มีคนขี่ช้างตัวนี้อยู่ รอให้เขาลงก่อนนะ', 2000);
+};
+function mountElephant(i) {
+  const e = elephants[i]; if (!e || me.ride >= 0) return;
   me.ride = i; PR = 1.9; e.rider = 'me'; me.x = e.x; me.z = e.z; me.face = e.ry; me.y = groundHeight(me.x, me.z); me.vy = 0;
   if (avatar) { avatar.play('Sit_Floor_Idle', 0.2); avatar.locked = true; }
-  toast('🐘 ขี่ช้างแล้ว! กดปุ่มกลางจออีกครั้งเพื่อลง', 2200); return true;
+  toast('🐘 ขี่ช้างแล้ว! กดปุ่มกลางจออีกครั้งเพื่อลง', 2200);
 }
 export function teleport(x, z) { if (me.ride >= 0) rideToggle(); me.x = x; me.z = z; me.y = groundHeight(x, z); me.vy = 0; }
 
@@ -296,7 +313,7 @@ function frame() {
   uTime.value = t;
   const night = updateCycle({ sunDir: SUN_DIR, fog: scene.fog, bloom: bloomPass });
   sun.color.setScalar(1);
-  if (running) { updatePlayer(dt); updateZone(dt); drawMinimap(); game.onTick?.(dt, t); game.onTickNet?.(dt); }
+  if (running) { updatePlayer(dt); updateZone(dt); drawMinimap(); game.onTick?.(dt, t); game.onTickNet?.(dt); updateAmbience(actx, me, game.quiet); }
   updateCamera(dt);
   for (const fn of animated) fn(t, dt);
   composer ? composer.render(dt) : renderer.render(scene, camera);
@@ -321,13 +338,14 @@ controls.pitch = 0.25; controls.dist = 14;
 animated.push((t) => { if (!running) controls.yaw = t * 0.05; });
 
 export { scene, camera, renderer, controls };
-window.__dev = { me, teleport, controls, game, groundHeight, scene, collide, walkable, colliders, PATHS, mapBase: mapImg };
+window.__dev = { elephants, me, teleport, controls, game, groundHeight, scene, collide, walkable, colliders, PATHS, mapBase: mapImg };
 
 export function startPlaying(profile) {
   Object.assign(me, profile);
   if (!(me.look >= 0)) me.look = [...me.name].reduce((a, ch) => a + ch.charCodeAt(0), 0) % STUDENT_LOOKS;
   $('screen-login').classList.add('hidden'); $('hud').classList.remove('hidden');
   spawnAvatar();
+  startAmbience(audio());   // login tap = user gesture, so the AudioContext may start
   teleport(me.x, me.z);
   controls.yaw = 0; controls.pitch = 0.3; controls.dist = 7.5;
   running = true;

@@ -1,7 +1,7 @@
 // Royal elephants (ช้างทรงเครื่อง) players can ride: press E / ✋ near one to climb on, again to get off.
 // Placeholder model built from primitives; swapped for the Sketchfab GLB when it is added (see buildModel).
 import * as THREE from 'three';
-import { groundHeight } from './world.js';
+import { groundHeight, colliders, PLATFORMS, isBlockedWater, HALF } from './world.js';
 import { prop } from './models.js';
 const HEAD_FIX = -Math.PI / 2;   // Sketchfab model is long along x; turn its head to +z
 
@@ -77,10 +77,55 @@ function buildModel() {
   return { root: g, legs, head, trunk };
 }
 
+// ---------- wandering NPC elephants ----------
+// Every client computes the same walk from (anchor x, z, t0) on the server's clock, so all students see the
+// elephant in the same place. Route = up to 10 clear legs out, then back the same way (ping-pong), forever.
+export const eleClock = { skew: 0 };   // server time - local time (ms)
+const WALK = 1.3, PAUSE = 5, PAD = 2.4;
+function freeAt(x, z) {
+  if (Math.abs(x) > HALF - 12 || z < -HALF + 12 || z > HALF - 12 || isBlockedWater(x, z)) return false;
+  for (const c of colliders) if (c.r !== undefined ? Math.hypot(x - c.x, z - c.z) < c.r + PAD : Math.abs(x - c.x) < c.hw + PAD && Math.abs(z - c.z) < c.hd + PAD) return false;
+  for (const q of PLATFORMS) if (Math.abs(x - q.x) < q.hw + 2 && Math.abs(z - q.z) < q.hd + 2) return false;
+  return true;
+}
+function segClear(ax, az, bx, bz) { const n = Math.ceil(Math.hypot(bx - ax, bz - az) / 1.5); for (let k = 1; k <= n; k++) if (!freeAt(ax + (bx - ax) * k / n, az + (bz - az) * k / n)) return false; return true; }
+function rand(seed) { let s = seed | 0; return () => { s = (s + 0x6d2b79f5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function makeRoute(i, x, z, t0) {
+  const r = rand((i + 1) * 7919 ^ Math.floor(t0 / 1000)), pts = [[x, z]]; let a = r() * 6.283;
+  for (let k = 0; k < 10; k++) {
+    const [px, pz] = pts[pts.length - 1]; let ok = null;
+    for (let tr = 0; tr < 14 && !ok; tr++) { const ang = a + (r() - 0.5) * 2.4, d = 10 + r() * 14, nx = px + Math.sin(ang) * d, nz = pz + Math.cos(ang) * d; if (segClear(px, pz, nx, nz)) { ok = [nx, nz]; a = ang; } }
+    if (!ok) break; pts.push(ok);
+  }
+  const seq = pts.concat(pts.slice(0, -1).reverse()), legs = []; let T = 0;
+  for (let k = 0; k + 1 < seq.length; k++) { const [ax, az] = seq[k], [bx, bz] = seq[k + 1], dur = Math.hypot(bx - ax, bz - az) / WALK; legs.push({ ax, az, bx, bz, t: T, dur }); T += dur + PAUSE; }
+  return { x, z, t0, legs, period: Math.max(T, 1) };
+}
+function routeAt(R, tau) {   // -> [x, z, heading|null, speed]
+  if (!R.legs.length) return [R.x, R.z, null, 0];
+  tau = ((tau % R.period) + R.period) % R.period;
+  for (const L of R.legs) if (tau < L.t + L.dur + PAUSE) {
+    const f = Math.max(0, Math.min(1, (tau - L.t) / L.dur));
+    return [L.ax + (L.bx - L.ax) * f, L.az + (L.bz - L.az) * f, Math.atan2(L.bx - L.ax, L.bz - L.az), tau < L.t + L.dur ? WALK : 0];
+  }
+  return [R.x, R.z, null, 0];
+}
+// new anchor (spawn, server update, or where a rider got off)
+export function setAnchor(i, x, z, t0) { const e = elephants[i]; if (e && (!e.route || e.route.t0 !== t0 || e.route.x !== x || e.route.z !== z)) e.route = makeRoute(i, x, z, t0); }
+export function wanderElephants(dt) {
+  const tau0 = (Date.now() + eleClock.skew) / 1000;
+  elephants.forEach((e, i) => {
+    if (e.rider || !e.route) return;
+    const [x, z, h, sp] = routeAt(e.route, tau0 - e.route.t0 / 1000);
+    let ry = e.ry; if (h !== null) { const d = Math.atan2(Math.sin(h - ry), Math.cos(h - ry)); ry += d * Math.min(1, dt * 2.5); }
+    setElephant(i, x, z, ry, sp, dt);
+  });
+}
 export function spawnElephants(scene, spots) {
   for (const [x, z, ry] of spots) {
     const m = buildModel(); m.root.position.set(x, groundHeight(x, z), z); m.root.rotation.y = ry; scene.add(m.root);
     elephants.push({ ...m, x, z, ry, rider: null, phase: Math.random() * 6, speed: 0 });
+    setAnchor(elephants.length - 1, x, z, Date.UTC(2026, 0, 1));   // offline default; the server replaces it when online
   }
 }
 export function nearestElephant(x, z, maxD = 4) {

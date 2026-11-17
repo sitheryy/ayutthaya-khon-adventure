@@ -420,7 +420,7 @@ function zoneForest(B, r) {
   waters.push({ x: px, z: pz, r: pr });
   for (let i = 0; i < 18; i++) { const a = i / 18 * 6.28; rock(B, px + Math.cos(a) * (pr + 1), pz + Math.sin(a) * (pr + 1), 0.8 + r() * 0.5, r); colliders.pop(); }
   for (let i = 0; i < 10; i++) { const a = r() * 6.28, d = r() * (pr - 2); lotus(B, px + Math.cos(a) * d, pz + Math.sin(a) * d, r); }
-  naga(B, px + 10, pz - 10, 1.4, -0.6);
+  // the naga is now an animated model circling this pond (naga.js)
   // cliffs + waterfalls (west edge)
   for (let i = 0; i < 16; i++) { const cz = z - 50 + i * 7; const s = 5 + r() * 4; B.put(new THREE.DodecahedronGeometry(s, 0), i % 2 ? C.rock : '#7e756a', ZONES[3].x - 48 + r() * 4, s * 0.8, cz, { ry: r() * 6, sy: 1.6 }); }
   boxC(ZONES[3].x - 48, z, 6, 60);
@@ -456,22 +456,6 @@ function garuda(B, x, y, z, s) {
     f(wg, '#c0392b', sd * 0.8, 4.0, -0.6, { ry });
     f(wg2, C.gold, sd * 0.9, 4.1, -0.45, { ry });
   });
-}
-function naga(B, x, z, s, ry) {
-  const pts = [[0, 0.6, 0], [5, 0.7, 4], [10, 0.9, 1], [9, 1.1, -4], [4, 1.4, -5], [0.5, 2.4, -2], [-0.5, 4.5, 0.5], [0.3, 6.6, 2.2], [1.4, 7.8, 3.6]];
-  const c = Math.cos(ry), sn = Math.sin(ry);
-  const curve = new THREE.CatmullRomCurve3(pts.map(([a, b, d]) => new THREE.Vector3(x + (a * c + d * sn) * s, b * s, z + (-a * sn + d * c) * s)));
-  const tube = new THREE.TubeGeometry(curve, 90, 0.85 * s, 10, false);
-  B.put(tube, '#2e9e5b');
-  const tail = new THREE.TubeGeometry(curve, 90, 0.6 * s, 8, false); tail.translate(0, -0.25 * s, 0);
-  B.put(tail, '#e8c64a');
-  const head = curve.getPoint(1), dir = curve.getTangent(1);
-  const hy = Math.atan2(dir.x, dir.z);
-  B.put(SPH(1.4 * s, 12, 10), '#2e9e5b', head.x, head.y, head.z, { sx: s, sy: 0.85 * s, sz: 1.3 * s, ry: hy, s: 1 });
-  B.put(BOX(1.6 * s, 0.4 * s, 1.4 * s), '#c0392b', head.x + Math.sin(hy) * 1.2 * s, head.y - 0.5 * s, head.z + Math.cos(hy) * 1.2 * s, { ry: hy });
-  for (let i = -2; i <= 2; i++) B.put(CONE(0.35 * s, 2.4 * s, 5), C.gold, head.x - Math.sin(hy) * 0.6 * s, head.y + 1.3 * s, head.z - Math.cos(hy) * 0.6 * s, { ry: hy, rx: -0.5, rz: i * 0.38 });
-  [-1, 1].forEach((sd) => B.put(SPH(0.25 * s, 6, 5), '#ffd23f', head.x + Math.sin(hy) * 1.2 * s + Math.cos(hy) * sd * 0.6 * s, head.y + 0.4 * s, head.z + Math.cos(hy) * 1.2 * s - Math.sin(hy) * sd * 0.6 * s));
-  for (let t = 0; t <= 0.55; t += 0.08) { const p = curve.getPoint(t); circ(p.x, p.z, 1.2 * s); }
 }
 function zoneTheater(B, r, scene) {
   const { x, z } = ZONES[4];
@@ -985,7 +969,7 @@ export function distSeg(x, z, a, b) {
   return Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t);
 }
 function scatterTrees(B, r) {
-  const keepOut = [[SPAWN.x, SPAWN.z, 22], [ZONES[0].x, ZONES[0].z, 50], [ZONES[1].x, ZONES[1].z, 64], [ZONES[2].x, ZONES[2].z - 2, 36], [ZONES[4].x + 8, ZONES[4].z, 26], [ZONES[5].x, WALL_Z - 12, 24], [ZONES[3].x + 16, ZONES[3].z + 18, 17], [ZONES[3].x - 4, ZONES[3].z - 10, 20], [DANCE.x, DANCE.z, 14]];
+  const keepOut = [[SPAWN.x, SPAWN.z, 22], [ZONES[0].x, ZONES[0].z, 50], [ZONES[1].x, ZONES[1].z, 64], [ZONES[2].x, ZONES[2].z - 2, 36], [ZONES[4].x + 8, ZONES[4].z, 26], [ZONES[5].x, WALL_Z - 12, 24], [ZONES[3].x + 16, ZONES[3].z + 18, 30], [ZONES[3].x - 4, ZONES[3].z - 10, 20], [DANCE.x, DANCE.z, 14]];
   const ok = (x, z) => x > CITY.w + 6 && z > CITY.n + 6 && !inRice(x, z, 3) && !isBlockedWater(x, z) && Math.abs(x - riverX(z)) > 17 && !keepOut.some(([a, b, rr]) => Math.hypot(x - a, z - b) < rr) && !PATHS.some(({ a, b, w }) => distSeg(x, z, a, b) < w + 2) && z < WALL_Z - 5;
   let n = 0;
   for (let i = 0; i < 9000 && n < (scatterTrees.max || 380); i++) {

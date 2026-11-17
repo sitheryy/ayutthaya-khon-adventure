@@ -50,10 +50,13 @@ export async function showCertificate(info) {
   const c = draw(info), url = c.toDataURL('image/png');
   let el = document.getElementById('cert');
   if (!el) { el = document.createElement('div'); el.id = 'cert'; document.body.appendChild(el); }
-  el.innerHTML = `<div class="cert-box"><img alt="เกียรติบัตร" /><div class="cert-btns">
+  el.innerHTML = `<button class="cert-x" type="button" aria-label="ปิด">✕</button><div class="cert-box"><img alt="เกียรติบัตร" /><div class="cert-btns">
     <a class="btn-gold" download="เกียรติบัตร-${info.name}.png">💾 บันทึกรูป</a><button class="btn-gold" type="button">ปิด</button></div>
     <div class="cert-tip">บน iPad/มือถือ: แตะรูปค้างไว้แล้วเลือก “บันทึกรูปภาพ”</div></div>`;
   el.querySelector('img').src = url; el.querySelector('a').href = url;
-  el.querySelector('button').onclick = () => el.classList.add('hidden');
+  // iPhone/iPad: close on touch-up too (a plain click can be swallowed by the game's touch handlers); tap the dark edge also closes
+  const close = (e) => { e.preventDefault(); e.stopPropagation(); el.classList.add('hidden'); };
+  el.querySelectorAll('.cert-x, .cert-btns button').forEach((b) => { b.addEventListener('pointerup', close); b.addEventListener('click', close); });
+  el.onpointerup = (e) => { if (e.target === el) close(e); };
   el.classList.remove('hidden');
 }

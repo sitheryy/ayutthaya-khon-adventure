@@ -4,7 +4,17 @@ import * as THREE from 'three';
 import { me, game, scene, toast, teleport, beep } from './main.js';
 import { makeCharacter, studentLook, STUDENT_LOOKS, ROLE_LOOKS } from './models.js';
 import { makeNameTag } from './character.js';
-import { elephants, setElephant, SEAT } from './elephant.js';
+import { elephants, setElephant, SEAT, setAnchor, eleClock } from './elephant.js';
+
+// elephants: server says who rides each one and where riderless ones were left
+function applyEles(list, now) {
+  if (!list) return; if (now) eleClock.skew = now - Date.now();
+  const mine = net.role === 'teacher' ? 'teacher' : net.sid;
+  list.forEach(([taken, key, x, z, t0], i) => { const e = elephants[i]; if (!e) return;
+    if (e.rider !== 'me' || key !== mine) e.rider = taken ? (key === mine ? 'me' : 'other') : (e.rider === 'me' ? 'me' : null);
+    if (!taken) setAnchor(i, x, z, t0); });
+}
+game.netRide = null;
 
 const local = ['localhost', '127.0.0.1'].includes(location.hostname);
 export const SERVER = (import.meta.env.VITE_SERVER || (local ? 'http://localhost:8787' : '')).replace(/\/$/, '');
@@ -32,7 +42,7 @@ export function connect(join) {
       ws.onopen = () => { retry = 0; net.online = true; net.send({ t: 'join', ...net.join, sid: net.sid }); };
       ws.onmessage = (e) => { const m = JSON.parse(e.data); handle(m); if (m.t === 'welcome') { clearTimeout(timer); done(true); } if (m.t === 'error' && m.msg === 'unauthorized') done(false); };
       ws.onclose = (e) => {
-        clearTimeout(timer); const was = net.online; net.online = false; setBadge();
+        clearTimeout(timer); const was = net.online; net.online = false; game.netRide = null; setBadge();
         if (e.code === 4000 || e.code === 4001) { toast(e.code === 4001 ? 'ครูนำคุณออกจากห้อง' : 'มีการเข้าใช้ชื่อนี้จากอีกเครื่อง'); return; }
         if (!settled) return done(false);
         if (was) toast('🔌 การเชื่อมต่อหลุด กำลังเชื่อมต่อใหม่...', 2500);
@@ -97,7 +107,8 @@ function runCountdown(kind, secs = 3) {
 function handle(m) {
   switch (m.t) {
     case 'welcome':
-      net.role = m.role; net.welcome = m;
+      net.role = m.role; net.welcome = m; applyEles(m.eles, m.now);
+      game.netRide = (i, on, x, z) => net.send({ t: 'ride', i, on, x, z });
       if (m.sid) { net.sid = m.sid; sessionStorage.setItem('khon-sid', m.sid); }
       if (m.me && net.role === 'student' && (m.me.x || m.me.z)) teleport(m.me.x, m.me.z);
       applyPhase(m.phase); break;
@@ -107,6 +118,8 @@ function handle(m) {
     case 'broadcast': toast(m.text, 5000); beep(880, 0.12, 0.08, 'triangle'); setTimeout(() => beep(1175, 0.18, 0.08, 'triangle'), 130); break;
     case 'countdown': runCountdown(m.kind, m.secs); break;
     case 'notice': toast(m.msg, 2000); break;
+    case 'eles': applyEles(m.list, m.now); break;
+    case 'ride': game.rideResult?.(m); break;
     case 'leaderboard': if (net.role === 'student') showLeaderboard(m.rows); break;
   }
   net.emit(m.t, m);

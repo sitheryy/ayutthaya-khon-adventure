@@ -33,6 +33,8 @@ export class Room {
     this.sockets = new Map();        // ws -> { sid, role }
     this.players = new Map();        // sid -> player
     this.phase = 'lobby';
+    // rideable elephants: who rides each one + where it was left (clients wander it from there on a shared clock)
+    this.eles = [[14, 36], [-18, 6]].map(([x, z]) => ({ rider: null, x, z, t0: Date.now() }));
     this.layout = []; this.pool = [];
     this.tokens = new Map();         // teacher token -> expiry
     this.ready = ctx.blockConcurrencyWhile(async () => {
@@ -104,7 +106,7 @@ export class Room {
       if (m.role === 'teacher') {
         if (!this.isTeacher(m.token)) return this.send(ws, { t: 'error', msg: 'unauthorized' });
         me.role = 'teacher';
-        this.send(ws, { t: 'welcome', role: 'teacher', phase: this.phase, total: this.layout.length || N_CHESTS });
+        this.send(ws, { t: 'welcome', role: 'teacher', now: Date.now(), eles: this.eleView(), phase: this.phase, total: this.layout.length || N_CHESTS });
         this.dirtyRoster = true; return;
       }
       let sid = clean(m.sid, 40) || rid();
@@ -118,11 +120,24 @@ export class Room {
       if (Number.isInteger(m.look) && m.look >= 0 && m.look < 12) p.look = m.look;   // chosen character (even = girl, odd = boy)
       if (this.layout.length && !p.chests) this.newChests(p);
       me.sid = sid; me.role = 'student';
-      this.send(ws, { t: 'welcome', role: 'student', sid, phase: this.phase, me: { x: p.x, z: p.z, score: p.score, found: p.found, hint: !!p.hint }, chests: this.chestView(p), total: this.layout.length || N_CHESTS });
+      this.send(ws, { t: 'welcome', role: 'student', now: Date.now(), eles: this.eleView(), sid, phase: this.phase, me: { x: p.x, z: p.z, score: p.score, found: p.found, hint: !!p.hint }, chests: this.chestView(p), total: this.layout.length || N_CHESTS });
       this.dirtyRoster = true; await this.save(p); return;
     }
     if (!me.role) return;
 
+    if (m.t === 'ride' && me.role) {   // one rider per elephant: the next player waits until the rider gets off
+      const key = me.sid || 'teacher', e = this.eles[m.i | 0]; if (!e) return;
+      if (m.on) {
+        if (e.rider && e.rider !== key) return this.send(ws, { t: 'ride', i: m.i | 0, ok: false, on: true });
+        for (const o of this.eles) if (o.rider === key) o.rider = null;
+        e.rider = key;
+      } else {
+        if (e.rider !== key) return;
+        e.rider = null; e.x = Math.max(-400, Math.min(400, +m.x || 0)); e.z = Math.max(-400, Math.min(400, +m.z || 0)); e.t0 = Date.now();
+      }
+      this.send(ws, { t: 'ride', i: m.i | 0, ok: true, on: !!m.on });
+      return this.all({ t: 'eles', list: this.eleView(), now: Date.now() });
+    }
     if (me.role === 'student') {
       const p = this.players.get(me.sid); if (!p) return;
       if (m.t === 'pos') {
@@ -163,7 +178,7 @@ export class Room {
     // ---------- teacher ----------
     if (me.role === 'teacher' && (m.t === 'pos' || m.t === 'show')) {   // teacher avatar shown to students
       const t = (this.teacher ||= { on: true, x: 0, y: 0, z: 20, ry: 0, s: 0, a: 0 }), n = (v, lim) => Math.max(-lim, Math.min(lim, +v || 0));
-      if (m.t === 'show') t.on = !!m.on; else Object.assign(t, { x: n(m.x, 400), y: n(m.y, 200), z: n(m.z, 400), ry: n(m.ry, 7), s: n(m.s, 40), a: m.a ? 1 : 0, e: Math.max(0, Math.min(9, m.e | 0)) });
+      if (m.t === 'show') return; Object.assign(t, { x: n(m.x, 400), y: n(m.y, 200), z: n(m.z, 400), ry: n(m.ry, 7), s: n(m.s, 40), a: m.a ? 1 : 0, e: Math.max(0, Math.min(9, m.e | 0)) });
       return;
     }
     if (m.t === 'cmd') {
@@ -211,8 +226,13 @@ export class Room {
   leaderboard() { return [...this.players.values()].sort((a, b) => b.score - a.score).map((p) => ({ name: p.name, no: p.no, cls: p.cls, score: p.score, found: p.found, right: p.right, wrong: p.wrong })); }
   async setPhase(ph) { this.phase = ph; await this.ctx.storage.put('phase', ph); this.all({ t: 'phase', phase: ph }); this.dirtyRoster = true; }
 
+  eleView() { return this.eles.map((e) => [e.rider ? 1 : 0, e.rider || '', +e.x.toFixed(2), +e.z.toFixed(2), e.t0]); }
   onClose(ws) {
     const me = this.sockets.get(ws); this.sockets.delete(ws);
+    const key = me?.sid || (me?.role === 'teacher' ? 'teacher' : null), at = me?.sid ? this.players.get(me.sid) : this.teacher;
+    let freed = false;
+    for (const e of this.eles) if (key && e.rider === key && !(key === 'teacher' && [...this.sockets.values()].some((s) => s.role === 'teacher'))) { e.rider = null; e.x = at?.x ?? e.x; e.z = at?.z ?? e.z; e.t0 = Date.now(); freed = true; }
+    if (freed) this.all({ t: 'eles', list: this.eleView(), now: Date.now() });
     if (me?.sid) { const p = this.players.get(me.sid); if (p && p.ws === ws) { p.online = false; p.ws = null; this.save(p); } }
     this.dirtyRoster = true;
     if (!this.sockets.size && this.tick) { clearInterval(this.tick); this.tick = null; }

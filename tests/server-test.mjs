@@ -28,7 +28,7 @@ const pl = await B.wait('players'); assert.ok(pl.list.some((r) => r[0] === 'test
 // teacher avatar visible to students, can be hidden
 T.send({ t: 'pos', x: 7, y: 0, z: 30, ry: 0, s: 0, a: 0 }); await sleep(400); B.inbox.length = 0;
 let tl = await B.wait('players'); assert.ok(tl.list.some((r) => r[0] === 'teacher' && r[4] === 7), 'student sees teacher');
-T.send({ t: 'show', on: false }); await sleep(400); B.inbox.length = 0; tl = await B.wait('players'); assert.ok(!tl.list.some((r) => r[0] === 'teacher'), 'teacher hidden on toggle');
+T.send({ t: 'show', on: false }); await sleep(400); B.inbox.length = 0; tl = await B.wait('players'); assert.ok(tl.list.some((r) => r[0] === 'teacher'), 'teacher always visible (no hide toggle)');
 T.send({ t: 'show', on: true }); await sleep(300);
 
 // start with a spot pool -> each student gets 12 chests
@@ -62,6 +62,14 @@ T.send({ t: 'cmd', c: 'resume' }); await sleep(200);
 A.send({ t: 'pos', x: -6, y: 0.45, z: 49, ry: 0, s: 0 }); await sleep(100);
 A.send({ t: 'hint' }); assert.equal((await A.wait('hint')).ok, true, 'Kru Khongkhwan gives a guide arrow');
 A.send({ t: 'hint' }); assert.equal((await A.wait('hint')).ok, false, 'only once per student');
+// elephants: one rider at a time; the next one gets in after the first gets off
+assert.equal(wa.eles.length, 2, 'welcome lists elephants'); assert.ok(wa.now > 0, 'server clock');
+A.send({ t: 'ride', i: 0, on: true }); assert.equal((await A.wait('ride')).ok, true, 'A rides elephant 0');
+B.send({ t: 'ride', i: 0, on: true }); assert.equal((await B.wait('ride')).ok, false, 'B cannot take it');
+A.send({ t: 'ride', i: 0, on: false, x: 30, z: 40 }); await A.wait('ride');
+const el = await B.wait('eles'); while (B.inbox.some((m) => m.t === 'eles')) await B.wait('eles');
+B.send({ t: 'ride', i: 0, on: true }); assert.equal((await B.wait('ride')).ok, true, 'B rides after A got off');
+B.send({ t: 'ride', i: 0, on: false, x: 31, z: 41 }); await B.wait('ride');
 T.send({ t: 'cmd', c: 'end' }); assert.equal((await A.wait('countdown')).kind, 'end'); const lb = await A.wait('leaderboard', 6000); assert.ok(lb.rows.length >= 2, 'leaderboard');
 const roster = await T.wait('roster'); assert.ok(roster.list.length >= 2, 'teacher roster');
 

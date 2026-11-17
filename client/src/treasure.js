@@ -252,7 +252,7 @@ export async function startTreasureHunt({ online, seed = 'OFFLINE', gated = fals
   animated.push((t, dt) => st.chests.forEach((c) => { if (c.lid) c.lid.rotation.x += (c.lidT - c.lid.rotation.x) * Math.min(1, dt * 7); }));
   updateHud(); attachWand(); spawnKru();
   window.__hunt = st;
-  $('detector').onclick = () => { st.muted = !st.muted; toast(st.muted ? '🔇 ปิดเสียงไม้กายสิทธิ์' : '🔊 เปิดเสียงไม้กายสิทธิ์', 1200); };
+  $('detector').onclick = () => { st.muted = game.quiet = !st.muted; toast(st.muted ? '🔇 ปิดเสียงไม้กายสิทธิ์และเสียงธรรมชาติ' : '🔊 เปิดเสียง', 1400); };
   $('detector').style.pointerEvents = 'auto';
   game.onAct = () => { if (st.busy) return; const n = nearest(); if (n && n.d < OPEN_DIST) openChest(n); else if (nearKru()) talkKru(); };
   game.onTick = (dt, t) => {
