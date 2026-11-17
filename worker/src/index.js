@@ -24,7 +24,7 @@ async function pbkdf2(password, salt) {
 const rid = () => b64(crypto.getRandomValues(new Uint8Array(18))).replace(/[+/=]/g, '');
 const clean = (s, n) => String(s ?? '').replace(/[<>]/g, '').trim().slice(0, n);
 const KRU = { x: -6, z: 50.2 };   // ครูของขวัญ NPC (client DANCE + 2.2 z)
-const N_CHESTS = 12, FIND_BONUS = 20, PENALTY = 20, TIME_LIMIT = 30, OPEN_RANGE = 4.5, MAX_PLAYERS = 50;
+const N_CHESTS = 12, POINT = 1, PENALTY = 0.5, TIME_LIMIT = 30, OPEN_RANGE = 4.5, MAX_PLAYERS = 50;
 const SPAWN = { x: 0, z: 20 };
 
 export class Room {
@@ -167,7 +167,7 @@ export class Room {
         p.pending = null;
         const q = this.bank[pend.qi], c = p.chests[pend.chest], late = Date.now() - pend.t > (TIME_LIMIT + 3) * 1000, right = !late && m.choice === q.answer;
         let pts = 0;
-        if (right) { pts = (q.points || 100) + FIND_BONUS; p.score += pts; p.found++; p.right++; c.found = true; }
+        if (right) { pts = POINT; p.score += pts; p.found++; p.right++; c.found = true; }
         else { p.wrong++; pts = -Math.min(PENALTY, p.score); p.score += pts; const spot = this.pickSpot(p); if (spot) { c.x = spot.x; c.z = spot.z; } }
         await this.save(p); this.dirtyRoster = true;
         return this.send(ws, { t: 'result', chest: pend.chest, right, timeout: late || m.choice < 0, answer: q.answer, explain: q.explain || '', points: pts, score: p.score, found: p.found, chestState: { x: c.x, z: c.z, found: c.found } });

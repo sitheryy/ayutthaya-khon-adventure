@@ -11,7 +11,7 @@ import { net } from './net.js';
 import { showCertificate } from './cert.js';
 
 const $ = (id) => document.getElementById(id);
-const N_CHESTS = 12, OPEN_DIST = 2.4, FIND_BONUS = 20;
+const N_CHESTS = 12, OPEN_DIST = 2.4, POINT = 1, PENALTY = 0.5;
 const st = { chests: [], score: 0, found: 0, total: N_CHESTS, bank: [], used: new Set(), muted: false, nextBeep: 0, blinkT: 0, busy: false, online: false, secs: 0, certShown: false, hintUsed: false, hintChest: -1 };
 
 const hash = (s) => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7);
@@ -164,7 +164,7 @@ function openChest(n) {
   st.used.add(qi); const q = st.bank[qi];
   setTimeout(() => showQuiz(q, (sel) => {
     if (sel === null) { finish(n.c, n.c.found); return; }
-    const right = sel === q.answer, points = right ? (q.points || 100) + FIND_BONUS : -Math.min(20, st.score);
+    const right = sel === q.answer, points = right ? POINT : -Math.min(PENALTY, st.score);
     if (right) { st.found++; n.c.found = true; }
     st.score += points;
     updateHud(); return { right, answer: q.answer, explain: q.explain, points };
