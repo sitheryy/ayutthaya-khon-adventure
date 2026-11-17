@@ -11,7 +11,7 @@ const $ = (id) => document.getElementById(id);
 const hash = (s) => [...(s || '')].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7);
 
 export const net = {
-  ws: null, online: false, role: null, phase: 'lobby', sid: localStorage.getItem('khon-sid') || '', listeners: {}, join: null,
+  ws: null, online: false, role: null, phase: 'lobby', sid: sessionStorage.getItem('khon-sid') || '', listeners: {}, join: null,
   on(t, fn) { (this.listeners[t] ||= []).push(fn); },
   emit(t, m) { (this.listeners[t] || []).forEach((fn) => fn(m)); },
   send(o) { if (this.ws?.readyState === 1) this.ws.send(JSON.stringify(o)); },
@@ -94,7 +94,7 @@ function handle(m) {
   switch (m.t) {
     case 'welcome':
       net.role = m.role; net.welcome = m;
-      if (m.sid) { net.sid = m.sid; localStorage.setItem('khon-sid', m.sid); }
+      if (m.sid) { net.sid = m.sid; sessionStorage.setItem('khon-sid', m.sid); }
       if (m.me && net.role === 'student' && (m.me.x || m.me.z)) teleport(m.me.x, m.me.z);
       applyPhase(m.phase); break;
     case 'players': for (const r of m.list) upsertPlayer(r); setBadge(); break;
