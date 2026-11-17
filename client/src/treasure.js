@@ -154,7 +154,7 @@ function showQuiz(q, onPick) {
     ok.textContent = 'เล่นต่อ'; ok.disabled = false;
   };
 }
-function closeQuiz() { clearInterval(showQuiz.iv); $('quiz').classList.add('hidden'); st.busy = false; if (net.phase !== 'paused' && net.phase !== 'ended') game.frozen = false; }
+function closeQuiz() { clearInterval(showQuiz.iv); $('quiz').classList.add('hidden'); st.busy = false; if (net.phase !== 'paused') game.frozen = false; }
 
 function openChest(n) {
   st.busy = true; game.frozen = true; playChest(n.c, true); SFX.open();
@@ -243,7 +243,7 @@ export async function startTreasureHunt({ online, seed = 'OFFLINE', gated = fals
       }), 400);
     });
     // server refused to open (not started / too far): release the player
-    net.on('notice', () => { if (st.busy && $('quiz').classList.contains('hidden')) { st.busy = false; game.frozen = net.phase === 'paused' || net.phase === 'ended'; const c = st.chests[st.pendingChest]; if (c) playChest(c, false); } });
+    net.on('notice', () => { if (st.busy && $('quiz').classList.contains('hidden')) { st.busy = false; game.frozen = net.phase === 'paused'; const c = st.chests[st.pendingChest]; if (c) playChest(c, false); } });
   } else {
     try { st.bank = (await (await fetch(import.meta.env.BASE_URL + 'questions.json')).json()).questions; }
     catch { st.bank = [{ q: 'โขนนิยมแสดงเรื่องใด', choices: ['รามเกียรติ์', 'อิเหนา', 'พระอภัยมณี', 'ขุนช้างขุนแผน'], answer: 0, explain: '', points: 100 }]; }

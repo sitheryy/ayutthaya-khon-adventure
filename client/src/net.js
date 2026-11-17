@@ -91,7 +91,7 @@ function overlay(title, body) {
 function applyPhase(ph) {
   net.phase = ph;
   if (net.role !== 'student') return;
-  game.frozen = ph === 'paused' || ph === 'ended';
+  game.frozen = ph === 'paused';   // lobby/ended: free to walk (chests still wait for START)
   if (ph === 'paused') overlay('⏸ หยุดเกมชั่วคราว', 'รอครูสั่งเล่นต่อนะ');
   else if (ph !== 'ended') overlay(null);
 }
@@ -124,6 +124,7 @@ function handle(m) {
   }
   net.emit(m.t, m);
 }
+$('overlay').onclick = () => { if (net.phase !== 'paused') overlay(null); };   // results can be dismissed
 export function showLeaderboard(rows) {
   const mine = rows.findIndex((r) => r.name === me.name && r.no === me.no);
   overlay('🏆 จบเกม — สรุปคะแนน', `<table class="lb"><tr><th>#</th><th>ชื่อ</th><th>เลขที่</th><th>ชั้น</th><th>คะแนน</th><th>สมบัติ</th></tr>${rows.slice(0, 15).map((r, i) => `<tr class="${i === mine ? 'me' : ''}"><td>${i + 1}</td><td>${esc(r.name)}</td><td>${esc(r.no)}</td><td>${esc(r.cls)}</td><td>${r.score}</td><td>${r.found}</td></tr>`).join('')}</table>`);
