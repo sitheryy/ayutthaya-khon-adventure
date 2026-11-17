@@ -3,7 +3,7 @@
 // waterfall: ali-k) and github.com/Muges/ambientsounds (wind: felix.blume). Trimmed to seamless mono loops.
 import { ZONES, riverX, RICE, waters } from './world.js';
 
-const FILES = { birds: 'amb-birds.mp3', night: 'amb-night.mp3', water: 'amb-water.mp3', wind: 'amb-wind.mp3' };
+const FILES = { birds: 'amb-birds.mp3', night: 'amb-night.mp3', water: 'amb-water.mp3', wind: 'amb-wind.mp3', music: 'music-bg.mp3' };   // music: "Echoes of Siam", supplied by the project owner
 const FALL = { x: ZONES[3].x - 38, z: ZONES[3].z + 8 };   // waterfall pool (see buildWaterfall)
 let layers = null, master = null;
 
@@ -16,7 +16,7 @@ export async function startAmbience(ctx) {
       const buf = await ctx.decodeAudioData(await (await fetch(import.meta.env.BASE_URL + f)).arrayBuffer());
       const src = ctx.createBufferSource(), g = ctx.createGain();
       src.buffer = buf; src.loop = true; g.gain.value = 0; src.connect(g).connect(master);
-      src.start(0, Math.random() * buf.duration);   // random offset: two layers never line up the same way
+      src.start(0, k === 'music' ? 0 : Math.random() * buf.duration);   // random offset: two layers never line up the same way
       layers[k] = g;
     } catch {}
   }));
@@ -34,6 +34,7 @@ export function updateAmbience(ctx, me, muted) {
     night: 0.08 + 0.17 * Math.max(forest, rice),        // evening: crickets and frogs, loud by the paddies
     water: water * 0.95,
     wind: 0.22 + 0.1 * Math.min(1, me.y / 6),           // a little stronger up on terraces
+    music: 0.42,                                        // background music everywhere
   };
   const t = ctx.currentTime;
   master.gain.setTargetAtTime(muted ? 0 : 0.55, t, 0.3);
