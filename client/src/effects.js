@@ -177,11 +177,11 @@ export function gradePass() {
         gl_FragColor = vec4(mix(c0, c, uAmt), 1.0);
       }`,
   });
-  const v = new THREE.Vector3();
+  const v = new THREE.Vector3(), fwd = new THREE.Vector3();
   p.update = (camera, sunDir, w, h) => {
     v.copy(camera.position).addScaledVector(sunDir, 2000).project(camera);
     p.uniforms.uSun.value.set(v.x * 0.5 + 0.5, v.y * 0.5 + 0.5); p.uniforms.uAspect.value = w / h;
-    const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd);
+    camera.getWorldDirection(fwd);
     p.uniforms.uSunVis.value = THREE.MathUtils.smoothstep(fwd.dot(sunDir), 0.2, 0.9) * (v.z < 1 ? 1 : 0);
   };
   return p;

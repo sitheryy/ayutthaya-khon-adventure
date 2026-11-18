@@ -26,7 +26,9 @@ let cullT = 0;   // every device gets the full graphics; the player taps the ⚡
 
 // ---------- renderer / scene ----------
 const canvas = $('game');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: !LOW, powerPreference: 'high-performance' });
+const COMPOSER = !LOW && !params.has('nobloom');   // post-processing path: the scene goes through render targets, so canvas MSAA would only smooth the final full-screen quad
+let lightAtStart = false; try { lightAtStart = localStorage.getItem('khon-light') === '1'; } catch {}
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !LOW && (!COMPOSER || lightAtStart), powerPreference: 'high-performance' });   // light mode draws straight to the canvas, so it keeps MSAA
 renderer.setPixelRatio(Math.min(devicePixelRatio, LOW ? 1.25 : 1.75));
 renderer.info.autoReset = false;   // frame() resets it once per frame, so ?debug counts every pass of the composer, not just the last one
 renderer.shadowMap.enabled = true;
@@ -188,9 +190,9 @@ function mountElephant(i) {
 export function teleport(x, z) { if (me.ride >= 0) rideToggle(); me.x = x; me.z = z; me.y = groundHeight(x, z); me.vy = 0; }
 
 // ---------- camera ----------
-const camTarget = new THREE.Vector3(me.x, 1.3, me.z), _fv = new THREE.Vector3();
+const camTarget = new THREE.Vector3(me.x, 1.3, me.z), _fv = new THREE.Vector3(), _ct = new THREE.Vector3();
 function updateCamera(dt) {
-  camTarget.lerp(new THREE.Vector3(me.x, me.y + 1.3 + (me.ride >= 0 ? SEAT : 0), me.z), 1 - Math.exp(-dt * 12));
+  camTarget.lerp(_ct.set(me.x, me.y + 1.3 + (me.ride >= 0 ? SEAT : 0), me.z), 1 - Math.exp(-dt * 12));
   const { yaw, pitch, dist } = controls;
   camera.position.set(camTarget.x + Math.sin(yaw) * Math.cos(pitch) * dist, camTarget.y + Math.sin(pitch) * dist, camTarget.z + Math.cos(yaw) * Math.cos(pitch) * dist);
   if (camera.position.y < 0.6) camera.position.y = 0.6;
@@ -319,7 +321,7 @@ function resize() {
 }
 // bloom (desktop): glints on water, gold roofs, sun
 let composer = null, tilt = null, bloomPass = null, grade = null;
-if (!LOW && !params.has('nobloom')) {
+if (COMPOSER) {
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
   composer.addPass((bloomPass = new UnrealBloomPass(new THREE.Vector2(512, 512), 0.38, 0.55, 0.95)));
@@ -373,7 +375,7 @@ function frame() {
   uTime.value = t; renderer.info.reset();
   const night = updateCycle({ sunDir: SUN_DIR, fog: scene.fog, bloom: bloomPass });
   sun.color.setScalar(1);
-  if (running) { updateNpc(me, !$('quiz')?.classList.contains('hidden') || !$('overlay')?.classList.contains('hidden')); updatePlayer(dt); updateZone(dt); drawMinimap(); game.onTick?.(dt, t); game.onTickNet?.(dt); updateAmbience(actx, me, game.quiet); }
+  if (running) { updateNpc(me, !$('quiz')?.classList.contains('hidden') || !$('overlay')?.classList.contains('hidden')); updatePlayer(dt); updateZone(dt); if ((focus.n & 1) === 0) drawMinimap(); game.onTick?.(dt, t); game.onTickNet?.(dt); updateAmbience(actx, me, game.quiet); }
   updateCamera(dt);
   cullT -= rawDt; if (cullT <= 0) { cullT = 0.3; for (const c of distCull) c.o.visible = Math.hypot(c.o.position.x - camera.position.x, c.o.position.z - camera.position.z) < c.r; }
   focus.x = camera.position.x; focus.z = camera.position.z; focus.n++;

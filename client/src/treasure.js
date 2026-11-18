@@ -112,6 +112,7 @@ function nearest() {
   st.chests.forEach((c, i) => { if (!c.found && c.g.visible) { const d = Math.hypot(c.x - me.x, c.z - me.z); if (!best || d < best.d) best = { c, i, d }; } });
   return best;
 }
+const _gemC = new THREE.Color();
 function detector(dt, t) {
   const n = nearest(), gem = $('det-gem'), txt = $('det-text'), arrow = { style: {} };
   if (!n) { txt.textContent = !playing() ? (net.phase === 'ended' ? 'จบเกมแล้ว' : 'รอครูเริ่มเกม...') : 'พบสมบัติครบแล้ว! 🎉'; arrow.style.opacity = 0; gem.classList.remove('on'); return; }
@@ -120,7 +121,7 @@ function detector(dt, t) {
   const hue = Math.round(210 * k);   // far = blue, mid = green/yellow, near = red
   gem.style.setProperty('--h', hue);
   txt.textContent = d < 45 ? `${d < 8 ? 'ใกล้มาก! ✨' : d < 22 ? 'สัญญาณแรง' : 'สัญญาณปานกลาง'} · ${Math.round(d)} ม.` : 'สัญญาณอ่อน';   // weak signal: no distance
-  if (wandGem) { const c = new THREE.Color(`hsl(${hue},100%,65%)`); wandGem.material.color.copy(c); wandGem.material.emissive.setHSL(hue / 360, 1, 0.5); wandGem.userData.halo.material.color.copy(c); }
+  if (wandGem) { const c = _gemC.setHSL(hue / 360, 1, 0.65, THREE.SRGBColorSpace); wandGem.material.color.copy(c); wandGem.material.emissive.setHSL(hue / 360, 1, 0.5); wandGem.userData.halo.material.color.copy(c); }
   const ang = Math.atan2(n.c.x - me.x, n.c.z - me.z) - (controls.yaw + Math.PI);
   arrow.style.transform = `rotate(${-ang}rad)`; arrow.style.opacity = d < 45 ? 1 : 0.35;
   if (t >= st.nextBeep) { st.nextBeep = t + interval; st.blinkT = 0.08; if (!st.muted && !st.busy) beep(560 + (1 - k) * 760, 0.08, 0.11 + (1 - k) * 0.08, 'sine'); }

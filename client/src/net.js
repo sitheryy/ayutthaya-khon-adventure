@@ -90,7 +90,7 @@ function upsertPlayer(r) {
 export function updateOthers(dt) {
   const k = 1 - Math.exp(-dt * 10), now = performance.now();
   for (const [sid, o] of others) {
-    if (now - o.seen > 4000) { scene.remove(o.ch.root); others.delete(sid); game.others.delete(sid); continue; }
+    if (now - o.seen > 4000) { scene.remove(o.ch.root); o.ch.root.traverse((c) => { if (c.isSprite) { c.material.map?.dispose(); c.material.dispose(); } }); others.delete(sid); game.others.delete(sid); continue; }
     const p = o.ch.root.position; if (o.sitting) p.y -= SEAT;   // undo last frame's seat offset so it never accumulates
     p.x += (o.tx - p.x) * k; p.y += (o.ty - p.y) * k; p.z += (o.tz - p.z) * k;
     let d = o.try - o.ch.root.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); o.ch.root.rotation.y += d * k;
