@@ -12,6 +12,7 @@ import { spawnNaga } from './naga.js';
 import { spawnElephants, nearestElephant, setElephant, animateElephants, elephants, SEAT, wanderElephants, setAnchor, eleClock } from './elephant.js';
 import { CITY, SUN_DIR, buildWorld, buildSky, ZONES, SPAWN, HALF, WALL_Z, colliders, animated, uTime, groundHeight, isBlockedWater, zoneAt, riverX, PATHS, waters, surfaceAt } from './world.js';
 import { makeNameTag } from './character.js';
+import { foliageLod } from './foliage.js';
 import { loadAssets, makeCharacter, studentLook, STUDENT_LOOKS } from './models.js';
 import { Controls } from './controls.js';
 
@@ -187,7 +188,7 @@ function updateCamera(dt) {
   camera.position.set(camTarget.x + Math.sin(yaw) * Math.cos(pitch) * dist, camTarget.y + Math.sin(pitch) * dist, camTarget.z + Math.cos(yaw) * Math.cos(pitch) * dist);
   if (camera.position.y < 0.6) camera.position.y = 0.6;
   camera.lookAt(camTarget);
-  grass.update(me.x, me.z, me.y);
+  grass.update(me.x, me.z, me.y); foliageLod(me.x, me.z);
   leaves.update(me.x, groundHeight(me.x, me.z), me.z);
   scene.userData.camPos = camera.position;
   if (tilt) { _fv.set(me.x, me.y + 1, me.z).project(camera); tilt.setFocus(THREE.MathUtils.clamp(_fv.y * 0.5 + 0.5, 0.2, 0.8)); }
@@ -307,6 +308,7 @@ if (!LOW && !params.has('nobloom')) {
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
   composer.addPass((bloomPass = new UnrealBloomPass(new THREE.Vector2(512, 512), 0.38, 0.55, 0.95)));
+  { const setB = bloomPass.setSize.bind(bloomPass); bloomPass.setSize = (w, h) => setB(Math.max(2, w >> 1), Math.max(2, h >> 1)); }   // glow is blurry anyway: build it from a half-size image
   tilt = tiltShiftPasses(); tilt.passes.forEach((p) => composer.addPass(p));
   composer.addPass(new OutputPass());
   if (params.get('fx') !== '0') composer.addPass((grade = gradePass()));   // ?fx=0 = old look, for comparing
@@ -316,29 +318,45 @@ resize(); setTimeout(resize, 400); setTimeout(resize, 1500);   // iOS settles it
 // "light graphics" button: lower resolution, no shadows, no bloom/tilt-shift. Remembered per device.
 let light = false; try { light = localStorage.getItem('khon-light') === '1'; } catch {}
 const PIXEL_RATIO = Math.min(devicePixelRatio, LOW ? 1.25 : 1.75);
+// dynamic resolution: if the frame rate stays low the render scale steps down (min 0.6), and creeps back up when it is smooth again
+let dynS = 1, dynFrozen = params.get('dynres') === '0';
+function applyRatio() { const pr = (light ? 1 : PIXEL_RATIO) * dynS; renderer.setPixelRatio(pr); composer?.setPixelRatio(pr); resize(); }
 function setLight(on) {
   light = on; try { localStorage.setItem('khon-light', on ? '1' : '0'); } catch {}
-  renderer.setPixelRatio(on ? 1 : PIXEL_RATIO); sun.castShadow = !on; scene.fog.far = on ? 320 : 600;
+  sun.castShadow = !on; scene.fog.far = on ? 320 : 600;
   canvas.style.filter = on || LOW ? 'brightness(1.08) contrast(0.86) saturate(0.9)' : '';   // cheap stand-in for the Japanese-tone grade (the real one needs the effects pipeline)
-  $('btn-light').textContent = on ? '⚡ ภาพเบา: เปิด' : '⚡ ภาพเบา: ปิด'; $('btn-light').classList.toggle('on', on); resize();
+  $('btn-light').textContent = on ? '⚡ ภาพเบา: เปิด' : '⚡ ภาพเบา: ปิด'; $('btn-light').classList.toggle('on', on); applyRatio();
 }
 $('btn-light').onclick = () => setLight(!light); setLight(light);
 
 const clock = new THREE.Timer();
 let fpsAcc = 0, fpsN = 0, running = false;
+let dynT = 0, dynN = 0, dynWarm = 0, dynUp = 0, dynPrev = 0, dynDown = false;
+function dynRes(dt) {
+  if (!running || light || dynFrozen || document.hidden) { dynT = dynN = 0; return; }
+  dynT += dt; dynN++; if (dynT < 1.5) return;
+  const fps = dynN / dynT; dynT = dynN = 0;
+  if (++dynWarm <= 2) return;                       // ignore the first seconds (shader compile, asset upload)
+  if (dynDown && fps - dynPrev < 2) { dynS = Math.min(1, dynS + 0.1); dynFrozen = true; applyRatio(); return; }   // lower resolution did not help (capped at 30 fps, say): undo and stop
+  dynDown = false;
+  if (fps < 40 && dynS > 0.61) { dynPrev = fps; dynDown = true; dynUp = 0; dynS = Math.max(0.6, dynS - 0.1); applyRatio(); }
+  else if (fps > 57 && dynS < 1) { if (++dynUp >= 3) { dynUp = 0; dynS = Math.min(1, dynS + 0.1); applyRatio(); } }
+  else dynUp = 0;
+}
 const showFps = params.has('debug');
 if (showFps) $('fps').classList.remove('hidden');
 function frame() {
-  clock.update(); const dt = Math.min(clock.getDelta(), 0.05), t = clock.getElapsed();
+  clock.update(); const rawDt = clock.getDelta(), dt = Math.min(rawDt, 0.05), t = clock.getElapsed();
   uTime.value = t;
   const night = updateCycle({ sunDir: SUN_DIR, fog: scene.fog, bloom: bloomPass });
   sun.color.setScalar(1);
   if (running) { updatePlayer(dt); updateZone(dt); drawMinimap(); game.onTick?.(dt, t); game.onTickNet?.(dt); updateAmbience(actx, me, game.quiet); }
   updateCamera(dt);
   for (const fn of animated) fn(t, dt);
+  dynRes(Math.min(rawDt, 0.5));
   grade?.update(camera, SUN_DIR, innerWidth, innerHeight);
   composer && !light ? composer.render(dt) : renderer.render(scene, camera);
-  if (showFps) { fpsAcc += dt; fpsN++; if (fpsAcc > 0.5) { $('fps').textContent = `${Math.round(fpsN / fpsAcc)} fps · ${renderer.info.render.calls} calls · ${(renderer.info.render.triangles / 1000) | 0}k tris`; fpsAcc = fpsN = 0; } }
+  if (showFps) { fpsAcc += dt; fpsN++; if (fpsAcc > 0.5) { $('fps').textContent = `${Math.round(fpsN / fpsAcc)} fps · x${dynS.toFixed(1)} · ${renderer.info.render.calls} calls · ${(renderer.info.render.triangles / 1000) | 0}k tris`; fpsAcc = fpsN = 0; } }
   if (running && !light && !lagHinted) { lagT += dt; lagN++; if (lagT > 6) { if (lagN / lagT < 22) { lagHinted = true; toast('🐢 เครื่องช้าใช่ไหม? แตะ ⚡ ภาพเบา ที่มุมขวาจะลื่นขึ้น', 6000); } lagT = lagN = 0; } }
   requestAnimationFrame(frame);
 }

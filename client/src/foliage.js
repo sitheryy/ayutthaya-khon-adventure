@@ -20,11 +20,11 @@ function leafTexture() {
   const t = new THREE.CanvasTexture(c); t.generateMipmaps = true; return t;
 }
 
-function clusterGeometry(count, seed) {
+function clusterGeometry(count, seed, size = 0.74) {
   let s = seed; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
   const planes = [], v = new THREE.Vector3(), n = new THREE.Vector3();
   for (let i = 0; i < count; i++) {
-    const p = new THREE.PlaneGeometry(0.74, 0.74);
+    const p = new THREE.PlaneGeometry(size, size);
     p.rotateZ(rnd() * 9); p.rotateX(rnd() * 6.28); p.rotateY(rnd() * 6.28);
     const sp = new THREE.Spherical(1 - Math.pow(rnd(), 3), Math.acos(2 * rnd() - 1), rnd() * Math.PI * 2);
     const c = new THREE.Vector3().setFromSpherical(sp); p.translate(c.x, c.y, c.z);
@@ -64,18 +64,33 @@ export function makeFoliageMaterial(colorA, colorB, uTime) {
   return m;
 }
 
-// items: [{x,y,z,s,tint}] -> one InstancedMesh
-export function buildFoliage(scene, items, { colorA, colorB, uTime, planes = 70, seed = 1 }) {
+// items: [{x,y,z,s,tint}] -> InstancedMeshes per 60 m cell (off-screen cells are culled in both the main and shadow pass);
+// cells far from the player swap to a cluster with fewer, larger leaf cards (same silhouette, ~40% of the triangles)
+const cells = [], FAR_AT = 110;
+export function foliageLod(x, z) {
+  for (const c of cells) { const far = Math.hypot(c.x - x, c.z - z) > FAR_AT; c.near.visible = !far; c.far.visible = far; }
+}
+export function buildFoliage(scene, items, { colorA, colorB, uTime, planes = 70, seed = 1, cell = 60 }) {
   if (!items.length) return null;
-  const geo = clusterGeometry(planes, seed), mat = makeFoliageMaterial(colorA, colorB, uTime);
-  const im = new THREE.InstancedMesh(geo, mat, items.length), d = new THREE.Object3D(), c = new THREE.Color();
-  items.forEach((it, i) => {
-    d.position.set(it.x, it.y, it.z); d.rotation.set(0, it.ry || 0, 0); d.scale.set(it.s, it.s * (it.sy || 0.9), it.s); d.updateMatrix();
-    im.setMatrixAt(i, d.matrix); im.setColorAt(i, c.setScalar(it.tint ?? 1));
-  });
-  im.castShadow = true; im.receiveShadow = true;
-  im.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, alphaMap: leaf, alphaTest: 0.5 });
-  im.computeBoundingSphere();
-  scene.add(im);
-  return im;
+  const geoNear = clusterGeometry(planes, seed), geoFar = clusterGeometry(Math.max(20, Math.round(planes * 0.4)), seed, 1.1), mat = makeFoliageMaterial(colorA, colorB, uTime);
+  const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, alphaMap: leaf, alphaTest: 0.5 });
+  const byCell = new Map();
+  for (const it of items) { const k = Math.floor(it.x / cell) + ',' + Math.floor(it.z / cell); (byCell.get(k) || byCell.set(k, []).get(k)).push(it); }
+  const d = new THREE.Object3D(), c = new THREE.Color();
+  for (const [k, list] of byCell) {
+    const [cx, cz] = k.split(',').map((v) => (Number(v) + 0.5) * cell), pair = [];
+    for (const [geo, shadow] of [[geoNear, true], [geoFar, false]]) {
+      const im = new THREE.InstancedMesh(geo, mat, list.length);
+      list.forEach((it, i) => {
+        d.position.set(it.x, it.y, it.z); d.rotation.set(0, it.ry || 0, 0); d.scale.set(it.s, it.s * (it.sy || 0.9), it.s); d.updateMatrix();
+        im.setMatrixAt(i, d.matrix); im.setColorAt(i, c.setScalar(it.tint ?? 1));
+      });
+      im.castShadow = shadow; im.receiveShadow = true; im.customDepthMaterial = depth;
+      im.computeBoundingSphere(); im.boundingSphere.radius += 2;   // room for the sway
+      scene.add(im); pair.push(im);
+    }
+    pair[1].visible = false;
+    cells.push({ x: cx, z: cz, near: pair[0], far: pair[1] });
+  }
+  return null;
 }

@@ -81,6 +81,7 @@ const TiltShift = (horizontal) => ({
   fragmentShader: `uniform sampler2D tDiffuse; uniform float uFocus, uDirH, uMax; uniform vec2 uRes; varying vec2 vUv;
     void main(){
       float amt = smoothstep(0.14, 0.6, abs(vUv.y - uFocus)) * uMax;
+      if (amt < 0.02) { gl_FragColor = texture2D(tDiffuse, vUv); return; }   // sharp band in the middle: skip the blur taps
       vec2 d = (uDirH > 0.5 ? vec2(1.0 / uRes.x, 0.0) : vec2(0.0, 1.0 / uRes.y)) * amt;
       vec4 c = texture2D(tDiffuse, vUv) * 0.2270270;
       c += (texture2D(tDiffuse, vUv + d * 1.3846) + texture2D(tDiffuse, vUv - d * 1.3846)) * 0.3162162;
