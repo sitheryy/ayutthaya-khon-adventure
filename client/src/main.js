@@ -336,7 +336,7 @@ resize(); setTimeout(resize, 400); setTimeout(resize, 1500);   // iOS settles it
 let light = false; try { light = localStorage.getItem('khon-light') === '1'; } catch {}
 const PIXEL_RATIO = Math.min(devicePixelRatio, LOW ? 1.25 : 1.75);
 // dynamic resolution: if the frame rate stays low the render scale steps down (min 0.6), and creeps back up when it is smooth again
-let dynS = 1, dynFrozen = params.get('dynres') === '0';
+let dynS = 1, dynFrozen = params.get('dynres') === '0', dynHold = 0;
 function applyRatio() { const pr = (light ? 1 : PIXEL_RATIO) * dynS; renderer.setPixelRatio(pr); composer?.setPixelRatio(pr); resize(); }
 function setLight(on) {
   light = on; try { localStorage.setItem('khon-light', on ? '1' : '0'); } catch {}
@@ -362,10 +362,11 @@ function dynRes(dt) {
   dynT += dt; dynN++; if (dynT < 1.5) return;
   const fps = dynN / dynT; dynT = dynN = 0;
   if (++dynWarm <= 2) return;                       // ignore the first seconds (shader compile, asset upload)
-  if (dynDown && fps - dynPrev < 2) { dynS = Math.min(1, dynS + 0.1); dynFrozen = true; applyRatio(); return; }   // lower resolution did not help (capped at 30 fps, say): undo and stop
+  if (dynDown && fps - dynPrev < 2) { dynS = Math.min(1, dynS + 0.1); dynHold = 8; dynDown = false; applyRatio(); return; }   // lower resolution did not help (capped at 30 fps, say): undo, wait ~12 s before trying again
   dynDown = false;
+  if (dynHold > 0) { dynHold--; return; }
   if (fps < 40 && dynS > 0.61) { dynPrev = fps; dynDown = true; dynUp = 0; dynS = Math.max(0.6, dynS - 0.1); applyRatio(); }
-  else if (fps > 57 && dynS < 1) { if (++dynUp >= 3) { dynUp = 0; dynS = Math.min(1, dynS + 0.1); applyRatio(); } }
+  else if (fps > 54 && dynS < 1) { if (++dynUp >= 2) { dynUp = 0; dynS = Math.min(1, dynS + 0.1); applyRatio(); } }
   else dynUp = 0;
 }
 const showFps = params.has('debug');

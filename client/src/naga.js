@@ -3,7 +3,7 @@
 // Position comes from the shared server clock, so every student sees it in the same place.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { ZONES, groundHeight } from './world.js';
+import { ZONES, groundHeight, focus } from './world.js';
 import { eleClock } from './elephant.js';
 
 const SCALE = 5.5;                                         // ~38 m of body, head ~9 m up: bigger than the old naga
@@ -63,12 +63,17 @@ export async function spawnNaga(scene, animated) {
   const box = new THREE.Box3().setFromObject(model);
   model.position.set(-fb.h.x, -box.min.y, -fb.h.z); root.scale.setScalar(SCALE);   // head at the root origin, feet on the ground
   scene.add(root);
+  let shOn = true;
   const pose = (dt, moving, t) => { amp += ((moving ? 1 : 0) - amp) * Math.min(1, dt * 2.5); phase += dt * (3.2 + 2.0 * amp); setPose(t, amp, phase); };
   animated.push((t, dt) => {
     const s = ((Date.now() + eleClock.skew) / 1000) % CYCLE, moving = s < LAP, a = (Math.min(s, LAP) / LAP) * Math.PI * 2;
     const x = C.x + Math.cos(a) * R, z = C.z + Math.sin(a) * R;
     root.position.set(x, groundHeight(x, z), z);
     root.rotation.y = fb.th - a;   // head on the circle, body trailing behind it along the arc (counter-clockwise round the pond)
+    const d = Math.hypot(focus.x - C.x, focus.z - C.z);   // far from the pond: no draw, no shadow, no 31-bone pose (body reaches ~60 m from the circle)
+    root.visible = d < 130;
+    if (!root.visible) return;
+    const sh = d < 85; if (sh !== shOn) { shOn = sh; root.traverse(o => { if (o.isMesh) o.castShadow = sh; }); }
     pose(dt, moving, t);
   });
 }
