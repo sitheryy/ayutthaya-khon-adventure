@@ -117,6 +117,7 @@ function updatePlayer(dt) {
   const sy = Math.sin(controls.yaw), cy = Math.cos(controls.yaw);
   const dx = cy * m.x - sy * m.y, dz = -sy * m.x - cy * m.y;
   const mag = Math.min(1, Math.hypot(m.x, m.y));
+  me.sprinting = !!m.sprint && mag > 0.1;
   const spd = (me.ride >= 0 ? (m.run ? 8.5 : 5) : (m.run ? (m.sprint ? 9.75 : 7.5) : 4.6)) * mag;
   let nx = me.x + (mag ? dx / Math.hypot(dx, dz) : 0) * spd * dt;
   let nz = me.z + (mag ? dz / Math.hypot(dx, dz) : 0) * spd * dt;
@@ -284,7 +285,7 @@ function stepSound(kind, run) {
 const dust = makeDust(scene);
 let stepT = 0;
 function footsteps(dt) {
-  { let k = 'dirt'; try { k = surfaceAt(me.x, me.z); } catch {} dust.update(dt, me, !game.fly && !game.frozen && me.grounded && me.ride < 0 && me.speed > 6.2, k); }
+  { let k = 'dirt'; try { k = surfaceAt(me.x, me.z); } catch {} dust.update(dt, me, !game.fly && !game.frozen && me.grounded && me.ride < 0 && me.sprinting && me.speed > 6.2, k); }
   if (game.fly || game.frozen || !me.grounded || me.speed < 1) { stepT = 0.18; return; }
   stepT -= dt * (me.speed > 6 ? 1.5 : 1);
   if (stepT <= 0) { stepT = 0.46; try { stepSound(surfaceAt(me.x, me.z), me.speed > 6); } catch {} }
