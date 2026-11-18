@@ -41,6 +41,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color:
 #joy-knob { position: absolute; left: 45px; top: 45px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,.75); }
 .round-btn { position: absolute; width: 74px; height: 74px; border-radius: 50%; border: 3px solid rgba(255,255,255,.7); background: rgba(40,25,10,.45); color: #fff; font-size: 30px; pointer-events: auto !important; display: none; touch-action: none; font-family: inherit; }
 #btn-jump { right: calc(24px + env(safe-area-inset-right)); bottom: 30px; }
+#btn-sprint { right: calc(110px + env(safe-area-inset-right)); bottom: 30px; } #btn-sprint.on { background: rgba(230,160,30,.75); border-color: #ffe08a; }
 #btn-act { right: calc(112px + env(safe-area-inset-right)); bottom: 22px; width: 66px; height: 66px; font-size: 26px; }
 body.touch #joy, body.touch .round-btn { display: block; }
 body.touch #quest { display: none; }

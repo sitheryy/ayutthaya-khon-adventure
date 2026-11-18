@@ -62,6 +62,7 @@ export class Controls {
     const tend = (e) => { if (tid !== null && find(e.changedTouches)) { tid = null; this.joy.x = this.joy.y = 0; knob.style.transform = ''; } };
     addEventListener('touchend', tend); addEventListener('touchcancel', tend);
     const jb = document.getElementById('btn-jump'); jb.addEventListener('pointerdown', (e) => { e.preventDefault(); this.jumpQueued = true; }); jb.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+    const sb = document.getElementById('btn-sprint'); sb.addEventListener('pointerdown', (e) => { e.preventDefault(); this.sprint = !this.sprint; sb.classList.toggle('on', this.sprint); }); sb.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
     // the on-screen prompts (open chest / ride elephant) are the action button
     ['prompt', 'prompt-ride'].forEach((id) => document.getElementById(id).addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.actQueued = true; }));
   }
@@ -75,7 +76,7 @@ export class Controls {
     if (x || y) { const m = Math.hypot(x, y); x /= m; y /= m; }
     else { x = this.joy.x; y = this.joy.y; }
     const mag = Math.hypot(x, y);
-    return { x, y, run: k.has('ShiftLeft') || k.has('ShiftRight') || mag > 0.85 };
+    return { x, y, run: this.sprint || k.has('ShiftLeft') || k.has('ShiftRight') || mag > 0.85, sprint: this.sprint };
   }
   takeJump() { const j = this.jumpQueued && this.enabled; this.jumpQueued = false; return j; }
   takeAct() { const a = this.actQueued && this.enabled; this.actQueued = false; return a; }
