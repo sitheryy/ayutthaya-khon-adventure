@@ -420,7 +420,6 @@ function zoneForest(B, r) {
   [[14, 1.2], [11, 1.2], [8, 1.2]].forEach(([w, h], i) => B.put(BOX(w, h, w), i % 2 ? C.stoneD : C.stone, gx, h / 2 + i * 1.2, gz));
   boxC(gx, gz, 7, 7);
   BIG.push({ name: 'garuda', x: gx, z: gz, h: 14, base: 3.6 - 0.05 });   // user-made Meshy garuda statue, same size as the old one
-  [-1, 1].forEach((sd) => lion(B, gx + sd * 7, gz + 12, Math.PI));
   // pond + naga
   const px = x + 16, pz = z + 18, pr = 13;
   waters.push({ x: px, z: pz, r: pr });
@@ -924,7 +923,7 @@ function placeBig(scene, { name, x, z, h, base, ry = 0 }) {
   const src = getModel(name); if (!src) return;
   const o = src.scene.clone(true); o.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(o), k = h / (box.max.y - box.min.y), c = box.getCenter(new THREE.Vector3());
-  o.traverse((m) => { if (m.isMesh) { const t = m.material; m.material = new THREE.MeshLambertMaterial({ map: t.map, color: t.color }); m.castShadow = m.receiveShadow = true; } });
+  o.traverse((m) => { if (m.isMesh) { const t = m.material; m.material = new THREE.MeshLambertMaterial({ map: t.map, color: t.color, side: THREE.DoubleSide }); m.castShadow = m.receiveShadow = true; } });   // thin plates (garuda's cheek ornaments) must show from both sides
   const g = new THREE.Group(); g.add(o); o.position.set(-c.x, -box.min.y, -c.z); g.scale.setScalar(k); g.rotation.y = ry; g.position.set(x, base, z); scene.add(g);
 }
 // The four Khon characters stand in a row in the start plaza; walking up to one opens its fact card (npc.js).
