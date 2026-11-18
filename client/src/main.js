@@ -13,6 +13,7 @@ import { spawnElephants, nearestElephant, setElephant, animateElephants, elephan
 import { CITY, SUN_DIR, buildWorld, buildSky, ZONES, SPAWN, HALF, WALL_Z, colliders, animated, distCull, uTime, groundHeight, isBlockedWater, zoneAt, riverX, PATHS, waters, surfaceAt } from './world.js';
 import { makeNameTag } from './character.js';
 import { foliageLod } from './foliage.js';
+import { makeDust } from './dust.js';
 import { loadAssets, makeCharacter, studentLook, STUDENT_LOOKS } from './models.js';
 import { Controls } from './controls.js';
 
@@ -280,8 +281,10 @@ function stepSound(kind, run) {
   src.connect(f).connect(g).connect(a.destination); src.start(t0, Math.random() * 0.1); src.stop(t0 + P[2] + 0.02);
   if (kind === 'wood' || kind === 'brick') beep(kind === 'wood' ? 150 : 210, 0.06, 0.05 * v, 'triangle');   // hollow thump / hard tick
 }
+const dust = makeDust(scene);
 let stepT = 0;
 function footsteps(dt) {
+  { let k = 'dirt'; try { k = surfaceAt(me.x, me.z); } catch {} dust.update(dt, me, !game.fly && !game.frozen && me.grounded && me.ride < 0 && me.speed > 6.2, k); }
   if (game.fly || game.frozen || !me.grounded || me.speed < 1) { stepT = 0.18; return; }
   stepT -= dt * (me.speed > 6 ? 1.5 : 1);
   if (stepT <= 0) { stepT = 0.46; try { stepSound(surfaceAt(me.x, me.z), me.speed > 6); } catch {} }
