@@ -187,7 +187,7 @@ function updateCamera(dt) {
   camera.position.set(camTarget.x + Math.sin(yaw) * Math.cos(pitch) * dist, camTarget.y + Math.sin(pitch) * dist, camTarget.z + Math.cos(yaw) * Math.cos(pitch) * dist);
   if (camera.position.y < 0.6) camera.position.y = 0.6;
   camera.lookAt(camTarget);
-  grass.update(me.x, me.z, groundHeight(me.x, me.z));
+  grass.update(me.x, me.z, me.y);
   leaves.update(me.x, groundHeight(me.x, me.z), me.z);
   scene.userData.camPos = camera.position;
   if (tilt) { _fv.set(me.x, me.y + 1, me.z).project(camera); tilt.setFocus(THREE.MathUtils.clamp(_fv.y * 0.5 + 0.5, 0.2, 0.8)); }

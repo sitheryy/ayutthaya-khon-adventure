@@ -141,7 +141,8 @@ export function buildGrass(scene, { sub, patch, uTime }) {
         vec2 side = vec2(cos(ang), sin(ang)) * position.x * 0.11 * mask;
         vec2 w = windAt(wp, uTime) * tip * h * 3.0;
         vec2 away = wp - uPlayer.xz; float pd = length(away);
-        w += (away / max(pd, 0.001)) * smoothstep(1.3, 0.2, pd) * tip * h * 0.9;   // gentle lean away from the player
+        float air = 1.0 - smoothstep(0.12, 0.8, uPlayer.y - tr.r);   // airborne (jumping): feet above the blades -> no parting
+        w += (away / max(pd, 0.001)) * smoothstep(1.3, 0.2, pd) * tip * h * 0.9 * air;   // gentle lean away from the player
         vec3 transformed = vec3(wp.x + side.x + w.x, tr.r + tip * h - dot(w, w) * 0.25, wp.y + side.y + w.y);
         if (mask < 0.02) transformed.y -= 50.0;
         vTip = tip; vVar = tr.b;`);
@@ -151,7 +152,7 @@ export function buildGrass(scene, { sub, patch, uTime }) {
         gc = mix(gc, uTip, smoothstep(0.45, 1.0, vTip) * (0.35 + vVar * 0.4));
         vec4 diffuseColor = vec4(gc, 1.0);`);
   };
-  m.customProgramCacheKey = () => 'grass2';
+  m.customProgramCacheKey = () => 'grass3';
   const mesh = new THREE.Mesh(g, m);
   mesh.frustumCulled = false; mesh.receiveShadow = true;
   scene.add(mesh);
