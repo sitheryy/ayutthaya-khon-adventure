@@ -27,7 +27,7 @@ export const NPC_DEFS = [
 export const NPCS = [];   // filled by world.js: { def, x, z, i }
 const $ = (id) => document.getElementById(id);
 let cur = null, hiddenAt = 0;
-const NEAR = 4.2, FAR = 7;
+const NEAR = 5.2, FAR = 7;
 
 function render() {
   const n = cur; if (!n) return;

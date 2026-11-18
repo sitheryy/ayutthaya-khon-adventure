@@ -459,7 +459,7 @@ function zoneTheater(B, r, scene) {
     const ch = makeKhon(role);
     ch.root.position.set(x + 0.5, 1.78, z + lz);
     ch.root.rotation.y = Math.PI / 2;
-    ch.root.scale.setScalar(1.5);
+    ch.root.scale.setScalar(1.9);
     ch.mixer.update(i * 0.6);
     scene.add(ch.root); cullAt(ch.root, 110);
     animated.push((t, dt) => { if (ch.root.visible) ch.update(dt); });
@@ -927,13 +927,13 @@ function placeBig(scene, { name, x, z, h, base, ry = 0 }) {
   const g = new THREE.Group(); g.add(o); o.position.set(-c.x, -box.min.y, -c.z); g.scale.setScalar(k); g.rotation.y = ry; g.position.set(x, base, z); scene.add(g);
 }
 // The four Khon characters stand in a row in the start plaza; walking up to one opens its fact card (npc.js).
-const MASCOT_S = 1.3;
+const MASCOT_S = 1.75;
 function buildMascots(scene) {
   NPC_DEFS.forEach((def) => {
     const x = SPAWN.x + def.dx, z = SPAWN.z - 7, ch = makeKhon(def.role);
-    ch.root.position.set(x, groundHeight(x, z), z); ch.root.scale.setScalar(MASCOT_S);   // 1.7 m model -> ~2.2 m: a bit taller than the players
-    const tag = makeNameTag(def.name, def.sub.split(' · ')[0], '#ffe08a'); tag.position.y = 2.7 / MASCOT_S; ch.root.add(tag);
-    scene.add(ch.root); cullAt(ch.root, 80); colliders.push({ x, z, r: 0.7 }); NPCS.push({ def, x, z, i: 0 });
+    ch.root.position.set(x, groundHeight(x, z), z); ch.root.scale.setScalar(MASCOT_S);   // 1.7 m model -> ~3 m: clearly bigger than the players
+    const tag = makeNameTag(def.name, def.sub.split(' · ')[0], '#ffe08a'); tag.position.y = 3.5 / MASCOT_S; tag.scale.multiplyScalar(1.1 / MASCOT_S); ch.root.add(tag);
+    scene.add(ch.root); cullAt(ch.root, 80); colliders.push({ x, z, r: 0.9 }); NPCS.push({ def, x, z, i: 0 });
     animated.push((t, dt) => { if (ch.root.visible) ch.update(dt); });
   });
 }
