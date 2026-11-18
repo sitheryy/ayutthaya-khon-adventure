@@ -183,7 +183,7 @@ function finish(c, right) {
     if (!st.online) { const [x, z] = freeSpot(Math.random, st.chests.filter((o) => o !== c && !o.found).map((o) => [o.x, o.z])); setTimeout(() => setPos(c, x, z), 300); }
     else if (c.next) setTimeout(() => setPos(c, c.next.x, c.next.z), 300);
   }
-  if (st.found >= st.total) { toast(`🎉 พบสมบัติครบ ${st.total} หีบ! คะแนนรวม ${st.score}`, 6000); if (!st.online) certificate(); }
+  if (st.found >= st.total) { toast(`🎉 พบสมบัติครบ ${st.total} หีบ! คะแนนรวม ${st.score}`, 6000); setTimeout(certificate, 2500); }   // certificate right away (online too), once the answer card has closed
 }
 // ---------- ครูของขวัญ: one guide arrow per student per game ----------
 const KRU = { x: DANCE.x, z: DANCE.z + 2.2 }, KRU_DIST = 2.8;

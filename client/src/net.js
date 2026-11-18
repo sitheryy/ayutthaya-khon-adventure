@@ -136,10 +136,18 @@ function handle(m) {
     case 'notice': toast(m.msg, 2000); break;
     case 'eles': applyEles(m.list, m.now); break;
     case 'ride': game.rideResult?.(m); break;
+    case 'rank': if (net.role === 'student') showRank(m); break;
     case 'leaderboard': if (net.role === 'student') showLeaderboard(m.rows); break;
   }
   net.emit(m.t, m);
 }
+let rankFolded = false;   // the board is open by default (a bit of competition); a tap on the pill folds it
+function showRank(m) {
+  $('hud-rank').classList.remove('hidden'); $('rank-n').textContent = m.rank; $('rank-of').textContent = `/ ${m.n}`;
+  $('rank-board').innerHTML = m.top.map((r, i) => `<div class="${r[0] === me.name ? 'me' : ''}"><span>${i + 1}. ${esc(r[0])}</span><b>${r[1]}</b></div>`).join('');
+  $('rank-board').classList.toggle('hidden', rankFolded);
+}
+$('hud-rank').onclick = () => { rankFolded = !rankFolded; $('rank-board').classList.toggle('hidden', rankFolded); };
 $('overlay').onclick = () => { if (net.phase !== 'paused') overlay(null); };   // results can be dismissed
 export function showLeaderboard(rows) {
   const mine = rows.findIndex((r) => r.name === me.name && r.no === me.no);

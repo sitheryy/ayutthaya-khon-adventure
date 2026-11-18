@@ -176,9 +176,20 @@ html, body { background: #2a1a0e; }
 .cert-x { position: fixed; top: calc(8px + env(safe-area-inset-top)); right: calc(8px + env(safe-area-inset-right)); z-index: 61; width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--gold); background: #3b2414; color: #ffe08a; font: 600 24px Mitr, sans-serif; cursor: pointer; }
 @media (max-height: 520px) { .cert-box img { max-height: calc(100dvh - 64px); } }
 
+#hud-rank { pointer-events: auto; cursor: pointer; } #hud-rank small { font-size: 12px; opacity: .8; margin-left: 4px; }
+#rank-board { pointer-events: auto; background: rgba(47,28,15,.9); border: 2px solid var(--gold-d); border-radius: 12px; padding: 6px 10px; font-size: 14px; min-width: 170px; }
+#rank-board div { display: flex; justify-content: space-between; gap: 12px; } #rank-board b { color: var(--gold); }
 #btn-light { position: absolute; top: calc(210px + env(safe-area-inset-top)); right: calc(14px + env(safe-area-inset-right)); pointer-events: auto; font: inherit; font-size: 14px; color: var(--cream); cursor: pointer; }
 #btn-light.on { background: #2e6b2e; }
-@media (max-height: 520px) { #btn-light { top: calc(126px + env(safe-area-inset-top)); font-size: 11px; } }
+@media (max-height: 520px) { #btn-light { top: calc(126px + env(safe-area-inset-top)); font-size: 11px; } #rank-board { font-size: 12px; } #rank-board div:nth-child(n+4) { display: none; } }
 
 #btn-exit { pointer-events: auto; font: inherit; font-size: 13px; color: var(--cream); cursor: pointer; }
 @media (max-height: 520px) { body.touch #net-badge { top: calc(98px + env(safe-area-inset-top)); } #btn-exit { font-size: 11px; } }
+
+#rank-board div.me { color: #fff3c4; font-weight: 600; } #rank-board div.me span::after { content: ' ◀'; color: var(--gold); }
+/* NPC speech card (Khon knowledge) */
+#npc-say { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(86px + env(safe-area-inset-bottom)); width: min(560px, calc(100vw - 200px)); pointer-events: auto; cursor: pointer; z-index: 12;
+  background: rgba(47,28,15,.94); border: 3px solid var(--gold); border-radius: 16px; padding: 10px 16px 8px; color: var(--cream); box-shadow: 0 6px 18px rgba(0,0,0,.4); }
+#npc-say b { color: var(--gold); font-size: 17px; } #npc-say b small { color: var(--cream); opacity: .75; font-weight: 400; margin-left: 8px; }
+#npc-say p { margin: 4px 0 2px; font-size: 16px; line-height: 1.45; } #npc-say .more { display: block; text-align: right; font-size: 12px; opacity: .75; }
+@media (max-height: 520px) { #npc-say { bottom: calc(60px + env(safe-area-inset-bottom)); width: min(520px, calc(100vw - 260px)); padding: 6px 12px 5px; } #npc-say b { font-size: 14px; } #npc-say p { font-size: 13.5px; line-height: 1.35; } }
