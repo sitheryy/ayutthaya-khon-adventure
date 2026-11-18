@@ -115,7 +115,7 @@ function updatePlayer(dt) {
   const sy = Math.sin(controls.yaw), cy = Math.cos(controls.yaw);
   const dx = cy * m.x - sy * m.y, dz = -sy * m.x - cy * m.y;
   const mag = Math.min(1, Math.hypot(m.x, m.y));
-  const spd = (me.ride >= 0 ? (m.run ? 8.5 : 5) : (m.run ? (m.sprint ? 11.5 : 7.5) : 4.6)) * mag;
+  const spd = (me.ride >= 0 ? (m.run ? 8.5 : 5) : (m.run ? (m.sprint ? 9.5 : 7.5) : 4.6)) * mag;
   let nx = me.x + (mag ? dx / Math.hypot(dx, dz) : 0) * spd * dt;
   let nz = me.z + (mag ? dz / Math.hypot(dx, dz) : 0) * spd * dt;
   if (!walkable(nx, nz)) { if (walkable(nx, me.z)) nz = me.z; else if (walkable(me.x, nz)) nx = me.x; else { nx = me.x; nz = me.z; } }
