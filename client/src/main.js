@@ -288,6 +288,9 @@ function footsteps(dt) {
 
 
 // ---------- loop ----------
+let lastSizeKey = '';
+let resizeTimer = 0;
+const resizeSoon = () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(resize, 150); };   // bursts of resize events -> one resize
 function resize() {
   // The canvas CSS box and the render buffer must share ONE size, or iOS stretches the picture / leaves a bar:
   // take the biggest of visual viewport, layout viewport and (installed app only) the real screen.
@@ -298,6 +301,9 @@ function resize() {
     const long = Math.max(screen.width, screen.height), short = Math.min(screen.width, screen.height), land = w >= h, tw = land ? long : short, th = land ? short : long;
     if (th - h > 0 && th - h <= 48) h = th; if (tw - w > 0 && tw - w <= 48) w = tw;
   }
+  const key = w + 'x' + h + '@' + renderer.getPixelRatio();
+  if (key === lastSizeKey) return;   // control centre / brightness slider / toolbar wiggles fire resize with the same size: reallocating the buffers each time is what made it stutter
+  lastSizeKey = key;
   renderer.setSize(w, h, true); camera.aspect = w / h; camera.updateProjectionMatrix();
   renderer.getDrawingBufferSize(STYLE.uRes.value);
   composer?.setSize(w, h); tilt?.setSize(STYLE.uRes.value.x, STYLE.uRes.value.y);
@@ -313,7 +319,7 @@ if (!LOW && !params.has('nobloom')) {
   composer.addPass(new OutputPass());
   if (params.get('fx') !== '0') composer.addPass((grade = gradePass()));   // ?fx=0 = old look, for comparing
 }
-addEventListener('resize', resize); window.visualViewport?.addEventListener('resize', resize); addEventListener('orientationchange', () => setTimeout(resize, 300)); addEventListener('pageshow', resize);
+addEventListener('resize', resizeSoon); window.visualViewport?.addEventListener('resize', resizeSoon); addEventListener('orientationchange', () => setTimeout(resize, 300)); addEventListener('pageshow', resizeSoon);
 resize(); setTimeout(resize, 400); setTimeout(resize, 1500);   // iOS settles its bars a moment after load
 // "light graphics" button: lower resolution, no shadows, no bloom/tilt-shift. Remembered per device.
 let light = false; try { light = localStorage.getItem('khon-light') === '1'; } catch {}
@@ -332,7 +338,15 @@ $('btn-light').onclick = () => setLight(!light); setLight(light);
 const clock = new THREE.Timer();
 let fpsAcc = 0, fpsN = 0, running = false;
 let dynT = 0, dynN = 0, dynWarm = 0, dynUp = 0, dynPrev = 0, dynDown = false;
+let dynSkip = 0;
+function onResume() {
+  if (document.hidden) return;
+  dynSkip = 4; dynT = dynN = 0; dynDown = false;                // the first seconds after waking are slow for every device: do not read them as 'weak device'
+  setTimeout(() => { try { if (actx && actx.state !== 'running') actx.resume(); } catch {} }, 400);   // audio comes back after the picture has settled
+}
+document.addEventListener('visibilitychange', onResume); addEventListener('pageshow', onResume);
 function dynRes(dt) {
+  if (dynSkip > 0) { dynSkip -= dt; dynT = dynN = 0; return; }
   if (!running || light || dynFrozen || document.hidden) { dynT = dynN = 0; return; }
   dynT += dt; dynN++; if (dynT < 1.5) return;
   const fps = dynN / dynT; dynT = dynN = 0;
