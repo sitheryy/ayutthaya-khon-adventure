@@ -10,7 +10,7 @@ import { torches } from './effects.js';
 const FOL = { trees: [], bushes: [] };
 // user-supplied Thai house pack (CGTrader, royalty free) placed as models; footprint sizes from tools/obj2glb.mjs
 const BUDDHA_FACE = 0;   // turn so the scan faces the model's +z front
-const MODELS = [], MSIZE = { thai_house1: [5.3, 9.5], thai_house2: [6.2, 7.4], thai_house3: [3.8, 7.8], thai_house4: [6.2, 5.8], thai_sala: [3.7, 5.7], thai_jar: [0.9, 0.9], thai_canoe: [1.5, 3.9] };
+const BIG = [], MODELS = [], MSIZE = { thai_house1: [5.3, 9.5], thai_house2: [6.2, 7.4], thai_house3: [3.8, 7.8], thai_house4: [6.2, 5.8], thai_sala: [3.7, 5.7], thai_jar: [0.9, 0.9], thai_canoe: [1.5, 3.9] };
 // ---------- layout rules: keep every path walkable, buildings face the road ----------
 export function nearestPath(x, z) {
   let best = null;
@@ -41,7 +41,9 @@ function model(name, x, z, ry = 0, sc = 1, collide = true, face = null) {
 }
 // jar beside a house (left side, toward the back), never on a road
 function jarBeside(h, name, sc) { const [w, d] = MSIZE[name]; const [jx, jz] = wpos(h.x, h.z, h.ry, (w / 2 + 1.2) * sc, -d * 0.2 * sc); if (pathClear(jx, jz, 0.6)) model('thai_jar', jx, jz, 0, 1.2); }
-import { makeCharacter, studentLook, ROLE_LOOKS, makeKhon, prop, propStatic, propParts, makeAnimal } from './models.js';
+import { makeCharacter, studentLook, ROLE_LOOKS, makeKhon, prop, propStatic, propParts, makeAnimal, getModel } from './models.js';
+import { NPC_DEFS, NPCS } from './npc.js';
+import { makeNameTag } from './character.js';
 
 export const HALF = 140;           // walkable half-extent (compact map: zones close together)
 export const SPAWN = { x: 0, z: 20 };
@@ -362,7 +364,7 @@ function lion(B, x, z, ry) { // สิงห์ guardian
 // ================= zones =================
 function zoneWat(B, r) {
   const { x, z } = ZONES[0];
-  prang(B, x, z - 6, 1.05);
+  BIG.push({ name: 'prang_big', x, z: z - 6, h: 30, base: groundHeight(x, z - 6) - 0.25 }); boxC(x, z - 6, 9.5, 9.5);   // user-made Meshy prang
   [[-20, -24], [20, -24], [-20, 12], [20, 12]].forEach(([a, b]) => prang(B, x + a, z + b, 0.5, C.laterite));
   [[-34, -30], [-34, -6], [34, -30], [34, -6], [-12, -40], [12, -40]].forEach(([a, b], i) => chedi(B, x + a, z + b, 0.75 + (i % 2) * 0.2, i % 3 ? C.brick : C.laterite, true));
   for (let i = 0; i < 6; i++) [-6, 6].forEach((sd) => { const h = 3 + r() * 3.5; B.put(CYL(0.7, 0.8, h, 8), C.brick, x + sd, h / 2, z + 18 + i * 4.2); circ(x + sd, z + 18 + i * 4.2, 0.9); });
@@ -415,7 +417,7 @@ function zoneForest(B, r) {
   const gx = x - 4, gz = z - 18;
   [[14, 1.2], [11, 1.2], [8, 1.2]].forEach(([w, h], i) => B.put(BOX(w, h, w), i % 2 ? C.stoneD : C.stone, gx, h / 2 + i * 1.2, gz));
   boxC(gx, gz, 7, 7);
-  garuda(B, gx, 3.6, gz, 1.25);
+  BIG.push({ name: 'garuda', x: gx, z: gz, h: 14, base: 3.6 - 0.05 });   // user-made Meshy garuda statue, same size as the old one
   [-1, 1].forEach((sd) => lion(B, gx + sd * 7, gz + 12, Math.PI));
   // pond + naga
   const px = x + 16, pz = z + 18, pr = 13;
@@ -433,31 +435,6 @@ function zoneForest(B, r) {
 function lotus(B, x, z, r) {
   B.put(CYL(0.9, 0.9, 0.05, 10), '#3f9e46', x, 0.1, z, { shadow: false });
   if (r() < 0.6) B.put(CONE(0.35, 0.7, 6), '#f78fb3', x + 0.3, 0.45, z, { shadow: false });
-}
-function garuda(B, x, y, z, s) {
-  const f = (g, c, lx, ly, lz, o = {}) => B.put(g, c, x + lx * s, y + ly * s, z + lz * s, { ...o, s: (o.s || 1) * s });
-  f(CYL(0.9, 1.3, 3.2, 10), '#c0392b', 0, 4.2, 0);                         // torso
-  f(CYL(1.35, 1.35, 0.5, 10), C.gold, 0, 2.9, 0);                          // belt
-  f(CYL(1.1, 1.4, 1.6, 10), C.gold, 0, 2.0, 0);                            // skirt
-  [-0.7, 0.7].forEach((lx) => { f(CYL(0.35, 0.25, 2.2, 6), C.gold, lx, 0.6, 0); f(BOX(0.8, 0.3, 1.1), C.goldD, lx, -0.4, 0.3); });
-  f(SPH(1.05, 12, 10), '#d9483b', 0, 6.6, 0);                               // head
-  f(CONE(0.45, 1.6, 6), C.gold, 0, 6.3, 1.3, { rx: Math.PI / 2 + 0.5 });   // beak
-  f(SPH(0.2, 6, 5), '#fff', -0.42, 6.95, 0.85); f(SPH(0.2, 6, 5), '#fff', 0.42, 6.95, 0.85);
-  f(SPH(0.11, 6, 5), '#111', -0.42, 6.95, 1.02); f(SPH(0.11, 6, 5), '#111', 0.42, 6.95, 1.02);
-  [[1.1, 0], [0.8, 1], [0.55, 2], [0.3, 3]].forEach(([rr, i]) => f(CYL(rr * 0.9, rr, 0.8, 8), C.gold, 0, 7.6 + i * 0.75, 0));
-  f(CONE(0.25, 1.4, 6), C.gold, 0, 11.2, 0);
-  [-1, 1].forEach((sd) => { // arms up
-    f(CYL(0.28, 0.3, 2.4, 6), '#c0392b', sd * 1.5, 6.1, 0, { rz: -sd * 0.9 });
-    f(SPH(0.35, 6, 5), C.gold, sd * 2.4, 7.0, 0);
-  });
-  const w = new THREE.Shape();
-  w.moveTo(0, 0); w.lineTo(2.5, 1.2); w.lineTo(5.6, 1.6); w.lineTo(7.4, 4.6); w.lineTo(6.2, 4.2); w.lineTo(6.6, 6.6); w.lineTo(5.0, 5.2); w.lineTo(4.8, 7.4); w.lineTo(3.4, 5.4); w.lineTo(2.4, 6.6); w.lineTo(1.6, 3.6); w.lineTo(0, 2.4); w.closePath();
-  const wg = new THREE.ExtrudeGeometry(w, { depth: 0.25, bevelEnabled: false });
-  const wg2 = wg.clone(); wg2.scale(0.8, 0.8, 1);
-  [[1, 0], [-1, Math.PI]].forEach(([sd, ry]) => {
-    f(wg, '#c0392b', sd * 0.8, 4.0, -0.6, { ry });
-    f(wg2, C.gold, sd * 0.9, 4.1, -0.45, { ry });
-  });
 }
 function zoneTheater(B, r, scene) {
   const { x, z } = ZONES[4];
@@ -940,31 +917,58 @@ function buildRice(scene, r, low) {
   }
   B.build(scene);
 }
+
+// A user-made static model, scaled to height h (m), centred on x,z, feet on `base`.
+function placeBig(scene, { name, x, z, h, base, ry = 0 }) {
+  const src = getModel(name); if (!src) return;
+  const o = src.scene.clone(true); o.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(o), k = h / (box.max.y - box.min.y), c = box.getCenter(new THREE.Vector3());
+  o.traverse((m) => { if (m.isMesh) { const t = m.material; m.material = new THREE.MeshLambertMaterial({ map: t.map, color: t.color }); m.castShadow = m.receiveShadow = true; } });
+  const g = new THREE.Group(); g.add(o); o.position.set(-c.x, -box.min.y, -c.z); g.scale.setScalar(k); g.rotation.y = ry; g.position.set(x, base, z); scene.add(g);
+}
+// The four Khon characters stand in a row in the start plaza; walking up to one opens its fact card (npc.js).
+const MASCOT_S = 1.3;
+function buildMascots(scene) {
+  NPC_DEFS.forEach((def) => {
+    const x = SPAWN.x + def.dx, z = SPAWN.z - 7, ch = makeKhon(def.role);
+    ch.root.position.set(x, groundHeight(x, z), z); ch.root.scale.setScalar(MASCOT_S);   // 1.7 m model -> ~2.2 m: a bit taller than the players
+    const tag = makeNameTag(def.name, def.sub.split(' · ')[0], '#ffe08a'); tag.position.y = 2.7 / MASCOT_S; ch.root.add(tag);
+    scene.add(ch.root); cullAt(ch.root, 80); colliders.push({ x, z, r: 0.7 }); NPCS.push({ def, x, z, i: 0 });
+    animated.push((t, dt) => { if (ch.root.visible) ch.update(dt); });
+  });
+}
 function buildLanterns(scene, r) {
   const spots = [];
   for (const { a, b, w } of PATHS) {
     const len = Math.hypot(b[0] - a[0], b[1] - a[1]), nx = -(b[1] - a[1]) / len, nz = (b[0] - a[0]) / len;
     for (let t = 16; t < len - 8; t += 22) {
       const sd = (spots.length % 2) ? 1 : -1, x = a[0] + (b[0] - a[0]) * t / len + nx * (w / 2 + 1) * sd, z = a[1] + (b[1] - a[1]) * t / len + nz * (w / 2 + 1) * sd;
-      if (pathClear(x, z, 0.3) && !isBlockedWater(x, z) && !colliders.some((c) => c.r !== undefined ? Math.hypot(x - c.x, z - c.z) < c.r + 0.8 : Math.abs(x - c.x) < c.hw + 0.8 && Math.abs(z - c.z) < c.hd + 0.8)) spots.push([x, z]);
+      if (pathClear(x, z, 0.3) && !isBlockedWater(x, z) && !colliders.some((c) => c.r !== undefined ? Math.hypot(x - c.x, z - c.z) < c.r + 0.8 : Math.abs(x - c.x) < c.hw + 0.8 && Math.abs(z - c.z) < c.hd + 0.8)) spots.push([x, z, Math.atan2(nz * sd, -nx * sd)]);
     }
   }
   // extra torches at gates and stages
   [[ZONES[1].x - 9, ZONES[1].z + 44], [ZONES[1].x + 9, ZONES[1].z + 44], [ZONES[5].x - 8, WALL_Z - 4], [ZONES[5].x + 8, WALL_Z - 4], [ZONES[4].x + 9, ZONES[4].z - 7], [ZONES[4].x + 9, ZONES[4].z + 7], [ZONES[0].x - 8, ZONES[0].z + 46], [ZONES[0].x + 8, ZONES[0].z + 46], [SPAWN.x - 5, SPAWN.z - 9], [SPAWN.x + 5, SPAWN.z - 9]].forEach(([x, z]) => spots.push(offPath(x, z, 0.3)));
-  const n = spots.length, d = new THREE.Object3D();
-  const post = new THREE.InstancedMesh(CYL(0.07, 0.1, 2.3, 6), getMat(C.woodD), n);
-  const base = new THREE.InstancedMesh(CYL(0.26, 0.12, 0.3, 8), getMat('#3a2a1e'), n);
-  const glow = new THREE.InstancedMesh(CYL(0.2, 0.2, 0.06, 8), new THREE.MeshLambertMaterial({ color: '#ffb347', emissive: '#ff8a2a', emissiveIntensity: 2 }), n);
-  const cap = new THREE.InstancedMesh(BOX(0.05, 0.05, 0.05), getMat(C.woodD), n);
-  const flames = [];
-  spots.forEach(([x, z], i) => {
+  const n = spots.length, d = new THREE.Object3D(), part = propParts('lamp_big')[0];
+  // user-made hanging lantern: the arm points along local +x, so it is turned to lean over the path
+  const geo = part.geo; geo.computeBoundingBox(); const bb = geo.boundingBox, H = bb.max.y - bb.min.y, k = 3.4 / H, pos = geo.attributes.position;
+  let px = 0, pz = 0, pc = 0, lx = 0, ly = 0, lz = 0, lc = 0;
+  for (let i = 0; i < pos.count; i++) {
+    const vx = pos.getX(i), vy = pos.getY(i), vz = pos.getZ(i);
+    if (vy < bb.min.y + 0.05 * H) { px += vx; pz += vz; pc++; }
+    if (vx > bb.min.x + 0.6 * (bb.max.x - bb.min.x) && vy < bb.max.y - 0.15 * H && vy > bb.min.y + 0.3 * H) { lx += vx; ly += vy; lz += vz; lc++; }
+  }
+  px /= pc; pz /= pc; lx = lx / lc - px; ly = ly / lc - bb.min.y; lz = lz / lc - pz;   // lantern body, relative to the pole's foot
+  geo.translate(-px, -bb.min.y, -pz); geo.scale(k, k, k);
+  const mat = part.mat; mat.emissive = new THREE.Color('#ff9a3a'); mat.emissiveMap = mat.map; mat.emissiveIntensity = 0.3;
+  const lamps = new THREE.InstancedMesh(geo, mat, n), flames = [];
+  spots.forEach(([x, z, ry = 0], i) => {
     const y = terrainH(x, z);
-    [[post, y + 1.15, 0], [base, y + 2.4, 0], [glow, y + 2.56, 0], [cap, y + 0.02, 0]].forEach(([m, yy, ry]) => { d.position.set(x, yy, z); d.rotation.set(0, ry, 0); d.updateMatrix(); m.setMatrixAt(i, d.matrix); });
+    d.position.set(x, y - 0.05, z); d.rotation.set(0, ry, 0); d.updateMatrix(); lamps.setMatrixAt(i, d.matrix);
     colliders.push({ x, z, r: 0.25 });
-    flames.push([x, y + 2.6, z]);
+    flames.push([x + (lx * Math.cos(ry) + lz * Math.sin(ry)) * k, y + ly * k, z + (-lx * Math.sin(ry) + lz * Math.cos(ry)) * k]);
   });
   torches(scene, flames, uTime);
-  [post, base, glow, cap].forEach((m) => { m.castShadow = m !== glow; m.receiveShadow = true; m.computeBoundingSphere(); scene.add(m); });
+  lamps.castShadow = false; lamps.receiveShadow = true; lamps.computeBoundingSphere(); scene.add(lamps);
 }
 export function distSeg(x, z, a, b) {
   const dx = b[0] - a[0], dz = b[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz)));
@@ -1004,6 +1008,8 @@ export function buildWorld(scene, { low = false } = {}) {
   buildFoliage(scene, FOL.trees, { colorA: '#2c6a2e', colorB: '#b7e05c', uTime, planes: low ? 80 : 170, seed: 3 });
   buildFoliage(scene, FOL.bushes, { colorA: '#2f6f2a', colorB: '#c4e65a', uTime, planes: low ? 60 : 120, seed: 9 });
   buildLeafLitter(scene, r, low);
+  for (const b of BIG) placeBig(scene, b);
+  buildMascots(scene);
   buildLanterns(scene, r);
   buildRice(scene, r, low);
   buildWaterfall(scene);

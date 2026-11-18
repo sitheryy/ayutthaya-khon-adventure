@@ -19,6 +19,8 @@ const cache = {};
 export const assets = { clips: {}, ready: false };
 
 const CHARS = ['Rogue', 'Mage', 'Knight', 'Barbarian'];
+const KHON_FILES = { rama: 'khon_rama', sida: 'khon_sida', hanuman: 'khon_hanuman', thotsakan: 'khon_thotsakan' };
+const EXTRA = [...Object.values(KHON_FILES), 'garuda', 'prang_big', 'lamp_big'];   // user-made Meshy models
 const PROPS = ['rustic_chest', 'Bush', 'BushBerries_1', 'Flowers', 'Lilypad', 'Rock_Moss_1', 'Rock_Moss_2', 'Rock_Moss_3', 'PalmTree_1', 'PalmTree_2', 'Willow_1', 'Boat', 'Sail_ship', 'Star', 'thai_house1', 'thai_house2', 'thai_house3', 'thai_house4', 'thai_sala', 'thai_jar', 'thai_canoe', 'Bull', 'Cow', 'Deer', 'Horse', 'ShibaInu', 'Cart', 'MarketStand_1', 'MarketStand_2', 'Barrel', 'Crate', 'Hay', 'Fence', 'Bench_1', 'Bags', 'Bamboo_1', 'Bamboo_2', 'Bamboo_3', 'Rice_3', 'Rice_4', ...['rug_rectangle_stripes_A', 'cabinet_medium_decorated', 'shelf_B_large_decorated', 'pictureframe_large_A', 'lamp_standing', 'pillow_A', 'table_small', 'chair_A_wood'].map((n) => 'kk_' + n), 'thai_buddha', 'elephant'];
 
 const loadImg = (src) => new Promise((ok, err) => { const i = new Image(); i.onload = () => ok(i); i.onerror = err; i.src = src; });
@@ -28,6 +30,7 @@ export async function loadAssets(onProgress) {
     ...CHARS.map((n) => loadGLB(n).then((g) => (cache[n] = g))),
     ...CHARS.map((n) => loadImg(BASE + n.toLowerCase() + '_texture.png').then((i) => (cache[n + '_tex'] = i))),
     ...PROPS.map((n) => loadGLB(n).then((g) => (cache[n] = g))),
+    ...EXTRA.map((n) => loadGLB(n).then((g) => (cache[n] = g))),
     loadGLB('anims').then((g) => g.animations.forEach((a) => (assets.clips[a.name] = a))),
   ];
   let done = 0;
@@ -130,29 +133,17 @@ export class Character {
 
 export function makeCharacter(look) { return new Character(look); }
 
+// Khon performers: user-made rigged models (Mixamo skeleton, Walking/Running clips only). Standing = the Walking clip frozen on
+// its neutral frame, plus a tiny breathing motion, so they cost nothing but the skinning.
 export function makeKhon(role) {
-  const k = KHON[role];
-  const ch = new Character({ base: 'Knight', hide: /Helmet|Cape/, recolor: { '0,0': k.skin, '0,1': k.body, '1,1': '#e9b73c', '3,0': '#e9b73c', '4,0': '#c9a227', '3,2': k.pants, '1,0': k.skin } });
-  if (ch.head) ch.head.add(khonHeadwear(k));
-  ch.play('Spellcasting');
-  return ch;
+  const g = cache[KHON_FILES[role]], root = new THREE.Group(), model = SkeletonUtils.clone(g.scene); root.add(model);
+  model.traverse((o) => { if (o.isMesh) { const src = o.material; o.material = new THREE.MeshLambertMaterial({ map: src.map, color: src.color }); o.castShadow = o.receiveShadow = true; o.frustumCulled = false; } });
+  const mixer = new THREE.AnimationMixer(model), act = mixer.clipAction(g.animations.find((c) => c.name === 'Walking'));
+  act.play(); mixer.setTime(0.01); act.paused = true;
+  let ph = Math.random() * 6;
+  return { root, mixer, update(dt) { ph += dt * 1.6; model.scale.y = 1 + Math.sin(ph) * 0.006; } };
 }
-function khonHeadwear(k) {
-  const g = new THREE.Group(), gold = new THREE.MeshLambertMaterial({ color: '#e9b73c' }), gold2 = new THREE.MeshLambertMaterial({ color: '#c08b24' });
-  const add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; g.add(o); return o; };
-  const tiers = k.crown === 'tall' ? 5 : 2;
-  add(new THREE.CylinderGeometry(0.62, 0.7, 0.22, 12), gold, 0, 0.95, 0);
-  for (let i = 0; i < tiers; i++) add(new THREE.CylinderGeometry(0.48 - i * 0.08, 0.56 - i * 0.08, 0.22, 10), i % 2 ? gold2 : gold, 0, 1.15 + i * 0.21, 0);
-  add(new THREE.ConeGeometry(0.13, k.crown === 'tall' ? 0.7 : 0.35, 8), gold, 0, 1.2 + tiers * 0.21 + 0.2, 0);
-  [-1, 1].forEach((sd) => { const e = add(new THREE.ConeGeometry(0.1, 0.5, 5), gold, sd * 0.68, 0.6, 0); e.rotation.z = sd * 0.4; });
-  if (k.mask) {
-    const red = new THREE.MeshLambertMaterial({ color: '#c0392b' }), white = new THREE.MeshLambertMaterial({ color: '#ffffff' });
-    [-1, 1].forEach((sd) => { add(new THREE.SphereGeometry(0.13, 8, 6), white, sd * 0.22, 0.55, 0.52).scale.set(1.2, 0.7, 0.4); add(new THREE.SphereGeometry(0.06, 8, 6), red, sd * 0.22, 0.55, 0.58); });
-    add(new THREE.BoxGeometry(0.4, 0.06, 0.05), red, 0, 0.22, 0.6);
-    if (k.fangs) [-1, 1].forEach((sd) => { const f = add(new THREE.ConeGeometry(0.04, 0.14, 4), white, sd * 0.12, 0.15, 0.6); f.rotation.x = Math.PI; });
-  }
-  return g;
-}
+export const getModel = (name) => cache[name];
 
 // ---------- props ----------
 const matCache = new Map();   // one material per (source, tint): clones of a prop share state, so the GPU switches less

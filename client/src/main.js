@@ -14,6 +14,7 @@ import { CITY, SUN_DIR, buildWorld, buildSky, ZONES, SPAWN, HALF, WALL_Z, collid
 import { makeNameTag } from './character.js';
 import { foliageLod } from './foliage.js';
 import { makeDust } from './dust.js';
+import { updateNpc } from './npc.js';
 import { loadAssets, makeCharacter, studentLook, STUDENT_LOOKS } from './models.js';
 import { Controls } from './controls.js';
 
@@ -369,7 +370,7 @@ function frame() {
   uTime.value = t;
   const night = updateCycle({ sunDir: SUN_DIR, fog: scene.fog, bloom: bloomPass });
   sun.color.setScalar(1);
-  if (running) { updatePlayer(dt); updateZone(dt); drawMinimap(); game.onTick?.(dt, t); game.onTickNet?.(dt); updateAmbience(actx, me, game.quiet); }
+  if (running) { updateNpc(me, !$('quiz')?.classList.contains('hidden') || !$('overlay')?.classList.contains('hidden')); updatePlayer(dt); updateZone(dt); drawMinimap(); game.onTick?.(dt, t); game.onTickNet?.(dt); updateAmbience(actx, me, game.quiet); }
   updateCamera(dt);
   cullT -= rawDt; if (cullT <= 0) { cullT = 0.3; for (const c of distCull) c.o.visible = Math.hypot(c.o.position.x - camera.position.x, c.o.position.z - camera.position.z) < c.r; }
   for (const fn of animated) fn(t, dt);
