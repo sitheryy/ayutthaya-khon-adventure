@@ -232,9 +232,9 @@ function updateHud() { $('hud-score').textContent = st.score; $('hud-chests').te
 export async function startTreasureHunt({ online, seed = 'OFFLINE', gated = false }) {
   st.online = online; st.gated = gated;
   if (online) {
-    net.on('welcome', (m) => { if (m.chests) setChests(m.chests); if (m.me) { st.score = m.me.score; st.found = m.me.found; st.hintUsed = !!m.me.hint; } st.total = m.total; updateHud(); });
+    net.on('welcome', (m) => { if (m.chests) setChests(m.chests); if (m.me) { st.score = m.me.score; st.found = m.me.found; st.hintUsed = !!m.me.hint; st.secs = Math.max(st.secs, m.me.secs || 0); } st.total = m.total; updateHud(); });
     if (net.welcome?.chests) setChests(net.welcome.chests);
-    if (net.welcome?.me) { st.score = net.welcome.me.score; st.found = net.welcome.me.found; st.hintUsed = !!net.welcome.me.hint; st.total = net.welcome.total; }
+    if (net.welcome?.me) { st.score = net.welcome.me.score; st.found = net.welcome.me.found; st.hintUsed = !!net.welcome.me.hint; st.secs = net.welcome.me.secs || 0; st.total = net.welcome.total; }
     net.on('phase', (m) => { if (m.phase === 'ended') setTimeout(certificate, 1500); else if (m.phase === 'playing') st.certShown = false; });
     net.on('chests', (m) => { setChests(m.chests); st.score = m.score; st.found = m.found; st.hintUsed = !!m.hint; if (!m.hint) st.hintChest = -1; updateHud(); });
     net.on('hint', (m) => (m.ok ? giveArrow() : toast('👩‍🏫 ครูของขวัญ: ' + m.msg, 2500)));
@@ -257,7 +257,7 @@ export async function startTreasureHunt({ online, seed = 'OFFLINE', gated = fals
     for (let i = 0; i < N_CHESTS; i++) { const av = list.map((c) => [c.x, c.z]), [x, z] = freeSpot(r, av, ZONES[i % ZONES.length]) || freeSpot(r, av); list.push({ x, z, found: false }); }
     setChests(list);
   }
-  animated.push((t, dt) => { if (playing() && net.phase !== 'paused') st.secs += dt; });   // time spent hunting (pauses not counted)
+  animated.push((t, dt) => { if (playing() && net.phase !== 'paused') st.secs += dt; game.secs = st.secs; });   // time spent hunting (pauses not counted)
   animated.push((t, dt) => st.chests.forEach((c) => { if (c.lid) c.lid.rotation.x += (c.lidT - c.lid.rotation.x) * Math.min(1, dt * 7); }));
   updateHud(); attachWand(); spawnKru();
   window.__hunt = st;

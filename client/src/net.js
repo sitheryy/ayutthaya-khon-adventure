@@ -120,10 +120,16 @@ function handle(m) {
     case 'notice': toast(m.msg, 2000); break;
     case 'eles': applyEles(m.list, m.now); break;
     case 'ride': game.rideResult?.(m); break;
+    case 'rank': if (net.role === 'student') showRank(m); break;
     case 'leaderboard': if (net.role === 'student') showLeaderboard(m.rows); break;
   }
   net.emit(m.t, m);
 }
+function showRank(m) {
+  $('hud-rank').classList.remove('hidden'); $('rank-n').textContent = m.rank; $('rank-of').textContent = `/ ${m.n}`;
+  $('rank-board').innerHTML = m.top.map((r, i) => `<div><span>${i + 1}. ${esc(r[0])}</span><b>${r[1]}</b></div>`).join('');
+}
+$('hud-rank').onclick = () => $('rank-board').classList.toggle('hidden');
 $('overlay').onclick = () => { if (net.phase !== 'paused') overlay(null); };   // results can be dismissed
 export function showLeaderboard(rows) {
   const mine = rows.findIndex((r) => r.name === me.name && r.no === me.no);
@@ -137,7 +143,7 @@ export function netTick(dt) {
   updateOthers(dt);
   if (!net.online || (net.role !== 'student' && net.role !== 'teacher')) return;
   acc += dt; if (acc < 0.125) return; acc = 0;
-  const msg = { t: 'pos', x: +me.x.toFixed(2), y: +me.y.toFixed(2), z: +me.z.toFixed(2), ry: +me.face.toFixed(2), s: +me.speed.toFixed(1), a: me.grounded ? 0 : 1, e: me.ride + 1 };
+  const msg = { t: 'pos', x: +me.x.toFixed(2), y: +me.y.toFixed(2), z: +me.z.toFixed(2), ry: +me.face.toFixed(2), s: +me.speed.toFixed(1), a: me.grounded ? 0 : 1, e: me.ride + 1, k: Math.floor(game.secs || 0) };
   const key = JSON.stringify(msg); if (key === last) return; last = key; net.send(msg);
 }
 

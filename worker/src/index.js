@@ -85,6 +85,18 @@ export class Room {
   all(o, filter = () => true) { const s = JSON.stringify(o); for (const [ws, m] of this.sockets) if (m.role && filter(m)) try { ws.send(s); } catch {} }
   save(p) { const { ws, ...rest } = p; return this.ctx.storage.put('p:' + p.sid, rest); }
 
+  // every ~3 s each student gets the top 5 plus their own place; only sent when something changed
+  sendRanks() {
+    const list = [...this.players.values()].filter((p) => p.online || p.found > 0).sort((a, b) => b.score - a.score || b.found - a.found);
+    const top = list.slice(0, 5).map((p) => [p.name, p.score]), n = list.length, sig = JSON.stringify(top) + n;
+    for (const [ws, m] of this.sockets) {
+      if (m.role !== 'student') continue;
+      const p = this.players.get(m.sid); if (!p) continue;
+      const rank = 1 + list.filter((q) => q.score > p.score).length, key = sig + rank + p.score;
+      if (m.rankKey === key) continue;
+      m.rankKey = key; this.send(ws, { t: 'rank', top, rank, n });
+    }
+  }
   publicPlayer(p) { return [p.sid, p.name, p.no, p.cls, +p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2), +p.ry.toFixed(2), +p.s.toFixed(1), p.a ? 1 : 0, p.online ? 1 : 0, p.score, p.found, p.right, p.wrong, p.e || 0, p.look ?? -1]; }
   broadcastPlayers() {
     if (!this.sockets.size) return;
@@ -93,6 +105,7 @@ export class Room {
     if (t?.on && [...this.sockets.values()].some((s) => s.role === 'teacher')) list.push(['teacher', 'ครู', '', '', +t.x.toFixed(2), +t.y.toFixed(2), +t.z.toFixed(2), +t.ry.toFixed(2), +t.s.toFixed(1), t.a, 1, 0, 0, 0, 0, t.e || 0]);
     this.all({ t: 'players', list });
     this.tickN = (this.tickN || 0) + 1;
+    if (this.tickN % 24 === 0) this.sendRanks();
     if (this.dirtyRoster || this.tickN % 8 === 0) { this.dirtyRoster = false; this.all({ t: 'roster', list: [...this.players.values()].map((p) => this.publicPlayer(p)) }, (m) => m.role === 'teacher'); }
   }
 
@@ -120,7 +133,7 @@ export class Room {
       if (Number.isInteger(m.look) && m.look >= 0 && m.look < 12) p.look = m.look;   // chosen character (even = girl, odd = boy)
       if (this.layout.length && !p.chests) this.newChests(p);
       me.sid = sid; me.role = 'student';
-      this.send(ws, { t: 'welcome', role: 'student', now: Date.now(), eles: this.eleView(), sid, phase: this.phase, me: { x: p.x, z: p.z, score: p.score, found: p.found, hint: !!p.hint }, chests: this.chestView(p), total: this.layout.length || N_CHESTS });
+      this.send(ws, { t: 'welcome', role: 'student', now: Date.now(), eles: this.eleView(), sid, phase: this.phase, me: { x: p.x, z: p.z, score: p.score, found: p.found, hint: !!p.hint, secs: p.secs || 0 }, chests: this.chestView(p), total: this.layout.length || N_CHESTS });
       this.dirtyRoster = true; await this.save(p); return;
     }
     if (!me.role) return;
@@ -143,7 +156,7 @@ export class Room {
       if (m.t === 'pos') {
         if (this.phase === 'paused') return;
         for (const k of ['x', 'y', 'z', 'ry', 's']) if (Number.isFinite(m[k])) p[k] = Math.max(-500, Math.min(500, m[k]));
-        p.a = !!m.a; p.e = Math.max(0, Math.min(9, m.e | 0)); return;
+        p.a = !!m.a; p.e = Math.max(0, Math.min(9, m.e | 0)); if (Number.isFinite(m.k)) p.secs = Math.max(p.secs || 0, Math.min(36000, m.k | 0)); return;   // k = hunting seconds, kept so a reload does not reset the certificate time
       }
       if (m.t === 'hint') {   // ครูของขวัญ in the dance room gives each student one guide arrow per game
         if (this.phase !== 'playing') return this.send(ws, { t: 'hint', ok: false, msg: 'รอครูเริ่มเกมก่อนนะจ๊ะ 😊' });
@@ -194,7 +207,7 @@ export class Room {
           this.layout = this.spreadLayout();
           await this.ctx.storage.put({ layout: this.layout, pool: this.pool });
         }
-        if (m.reset !== false) for (const p of this.players.values()) { p.score = 0; p.found = 0; p.right = 0; p.wrong = 0; p.hint = false; this.newChests(p); await this.save(p); }
+        if (m.reset !== false) for (const p of this.players.values()) { p.score = 0; p.found = 0; p.right = 0; p.wrong = 0; p.hint = false; p.secs = 0; this.newChests(p); await this.save(p); }
         await this.setPhase('playing');
         for (const [ws2, mm] of this.sockets) if (mm.role === 'student') { const p = this.players.get(mm.sid); this.send(ws2, { t: 'chests', chests: this.chestView(p), total: this.layout.length, score: p.score, found: p.found, hint: !!p.hint }); }
         this.all({ t: 'broadcast', text: '🎉 เริ่มเกมแล้ว! ใช้ไม้กายสิทธิ์ตามหาหีบสมบัติโขน' });

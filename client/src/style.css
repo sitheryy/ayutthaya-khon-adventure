@@ -120,7 +120,7 @@ body.touch #detector { bottom: 130px; }
 .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; } .dot.on { background: #4cd964; } .dot.off { background: #888; } .dot.frz { background: #ffcc00; }
 table.lb tr.me td { background: rgba(255,224,138,.3); }
 #net-badge { position: fixed; left: 10px; bottom: 8px; z-index: 12; }
-body.touch #net-badge { bottom: auto; top: calc(108px + env(safe-area-inset-top)); }
+body.touch #net-badge { bottom: auto; top: calc(134px + env(safe-area-inset-top)); }
 
 body.touch #prompt, body.touch #prompt-ride { bottom: 215px; }
 body.touch #toast { top: 16%; }
@@ -137,7 +137,7 @@ body.touch #toast { top: 16%; }
 
 /* iPad fullscreen: Safari draws its own close (X) button top-left; move the HUD clear of it */
 html:fullscreen #hud-tl, html:-webkit-full-screen #hud-tl { top: 70px; }
-html:fullscreen body.touch #net-badge, html:-webkit-full-screen body.touch #net-badge { top: 168px; }
+html:fullscreen body.touch #net-badge, html:-webkit-full-screen body.touch #net-badge { top: 194px; }
 
 #prompt-ride { position: absolute; bottom: 84px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.6); padding: 8px 18px; border-radius: 999px; font-size: 16px; border: 2px solid var(--gold); }
 
@@ -175,3 +175,10 @@ html, body { background: #2a1a0e; }
 .cert-box img { max-height: calc(100dvh - 90px); }
 .cert-x { position: fixed; top: calc(8px + env(safe-area-inset-top)); right: calc(8px + env(safe-area-inset-right)); z-index: 61; width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--gold); background: #3b2414; color: #ffe08a; font: 600 24px Mitr, sans-serif; cursor: pointer; }
 @media (max-height: 520px) { .cert-box img { max-height: calc(100dvh - 64px); } }
+
+#hud-rank { pointer-events: auto; cursor: pointer; } #hud-rank small { font-size: 12px; opacity: .8; margin-left: 4px; }
+#rank-board { pointer-events: auto; background: rgba(47,28,15,.9); border: 2px solid var(--gold-d); border-radius: 12px; padding: 6px 10px; font-size: 14px; min-width: 170px; }
+#rank-board div { display: flex; justify-content: space-between; gap: 12px; } #rank-board b { color: var(--gold); }
+#btn-light { position: absolute; top: calc(210px + env(safe-area-inset-top)); right: calc(14px + env(safe-area-inset-right)); pointer-events: auto; font: inherit; font-size: 14px; color: var(--cream); cursor: pointer; }
+#btn-light.on { background: #2e6b2e; }
+@media (max-height: 520px) { #btn-light { top: calc(126px + env(safe-area-inset-top)); font-size: 11px; } #rank-board { font-size: 12px; } }

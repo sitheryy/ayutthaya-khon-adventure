@@ -303,6 +303,15 @@ if (!LOW && !params.has('nobloom')) {
   composer.addPass(new OutputPass());
 }
 addEventListener('resize', resize); resize();
+// "light graphics" button: lower resolution, no shadows, no bloom/tilt-shift. Remembered per device.
+let light = false; try { light = localStorage.getItem('khon-light') === '1'; } catch {}
+const PIXEL_RATIO = Math.min(devicePixelRatio, LOW ? 1.25 : 1.75);
+function setLight(on) {
+  light = on; try { localStorage.setItem('khon-light', on ? '1' : '0'); } catch {}
+  renderer.setPixelRatio(on ? 1 : PIXEL_RATIO); sun.castShadow = !on; scene.fog.far = on ? 320 : 600;
+  $('btn-light').textContent = on ? '⚡ ภาพเบา: เปิด' : '⚡ ภาพเบา: ปิด'; $('btn-light').classList.toggle('on', on); resize();
+}
+$('btn-light').onclick = () => setLight(!light); setLight(light);
 
 const clock = new THREE.Timer();
 let fpsAcc = 0, fpsN = 0, running = false;
@@ -316,10 +325,12 @@ function frame() {
   if (running) { updatePlayer(dt); updateZone(dt); drawMinimap(); game.onTick?.(dt, t); game.onTickNet?.(dt); updateAmbience(actx, me, game.quiet); }
   updateCamera(dt);
   for (const fn of animated) fn(t, dt);
-  composer ? composer.render(dt) : renderer.render(scene, camera);
+  composer && !light ? composer.render(dt) : renderer.render(scene, camera);
   if (showFps) { fpsAcc += dt; fpsN++; if (fpsAcc > 0.5) { $('fps').textContent = `${Math.round(fpsN / fpsAcc)} fps · ${renderer.info.render.calls} calls · ${(renderer.info.render.triangles / 1000) | 0}k tris`; fpsAcc = fpsN = 0; } }
+  if (running && !light && !lagHinted) { lagT += dt; lagN++; if (lagT > 6) { if (lagN / lagT < 22) { lagHinted = true; toast('🐢 เครื่องช้าใช่ไหม? แตะ ⚡ ภาพเบา ที่มุมขวาจะลื่นขึ้น', 6000); } lagT = lagN = 0; } }
   requestAnimationFrame(frame);
 }
+let lagT = 0, lagN = 0, lagHinted = false;
 drawMapBase();
 requestAnimationFrame(frame);
 // already running as an installed app (home-screen icon) = already full screen: no button needed
