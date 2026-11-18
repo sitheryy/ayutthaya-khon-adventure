@@ -11,7 +11,7 @@ import { startAmbience, updateAmbience } from './ambience.js';
 import { spawnNaga } from './naga.js';
 import { spawnVillagers } from './villagers.js';
 import { spawnElephants, nearestElephant, setElephant, animateElephants, elephants, SEAT, wanderElephants, setAnchor, eleClock } from './elephant.js';
-import { CITY, SUN_DIR, buildWorld, buildSky, ZONES, SPAWN, HALF, WALL_Z, colliders, animated, distCull, uTime, groundHeight, isBlockedWater, zoneAt, riverX, PATHS, waters, surfaceAt } from './world.js';
+import { CITY, SUN_DIR, buildWorld, buildSky, ZONES, SPAWN, HALF, WALL_Z, colliders, animated, distCull, focus, uTime, groundHeight, isBlockedWater, zoneAt, riverX, PATHS, waters, surfaceAt } from './world.js';
 import { makeNameTag } from './character.js';
 import { foliageLod } from './foliage.js';
 import { makeDust } from './dust.js';
@@ -30,6 +30,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: !LOW, powerPrefere
 renderer.setPixelRatio(Math.min(devicePixelRatio, LOW ? 1.25 : 1.75));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.shadowMap.autoUpdate = false;   // frame() redraws the shadow map every 2nd frame
 renderer.toneMapping = THREE.NeutralToneMapping;
 renderer.toneMappingExposure = 1.0;
 const scene = new THREE.Scene();
@@ -375,6 +376,8 @@ function frame() {
   if (running) { updateNpc(me, !$('quiz')?.classList.contains('hidden') || !$('overlay')?.classList.contains('hidden')); updatePlayer(dt); updateZone(dt); drawMinimap(); game.onTick?.(dt, t); game.onTickNet?.(dt); updateAmbience(actx, me, game.quiet); }
   updateCamera(dt);
   cullT -= rawDt; if (cullT <= 0) { cullT = 0.3; for (const c of distCull) c.o.visible = Math.hypot(c.o.position.x - camera.position.x, c.o.position.z - camera.position.z) < c.r; }
+  focus.x = camera.position.x; focus.z = camera.position.z; focus.n++;
+  renderer.shadowMap.needsUpdate = (focus.n & 1) === 0;
   for (const fn of animated) fn(t, dt);
   dynRes(Math.min(rawDt, 0.5));
   grade?.update(camera, SUN_DIR, innerWidth, innerHeight);

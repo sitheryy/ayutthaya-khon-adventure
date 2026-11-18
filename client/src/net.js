@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { me, game, scene, toast, teleport, beep } from './main.js';
 import { makeCharacter, studentLook, STUDENT_LOOKS, ROLE_LOOKS } from './models.js';
 import { makeNameTag } from './character.js';
+import { lodStep } from './world.js';
 import { elephants, setElephant, SEAT, setAnchor, eleClock } from './elephant.js';
 
 // elephants: server says who rides each one and where riderless ones were left
@@ -80,7 +81,7 @@ function upsertPlayer(r) {
     const isT = sid === 'teacher', ch = makeCharacter(isT ? ROLE_LOOKS.monk : studentLook(look));
     ch.root.add(makeNameTag(isT ? '👩‍🏫 ครู' : name, '', isT ? '#ffe08a' : undefined));
     ch.root.position.set(x, y, z); scene.add(ch.root);
-    o = { ch, tx: x, ty: y, tz: z, try: ry, s: 0, a: 0, seen: 0 };
+    o = { ch, lod: lodStep(), tx: x, ty: y, tz: z, try: ry, s: 0, a: 0, seen: 0 };
     others.set(sid, o);
   }
   Object.assign(o, { tx: x, ty: y, tz: z, try: ry, s, a, e, seen: performance.now(), name, no, cls });
@@ -90,12 +91,13 @@ export function updateOthers(dt) {
   const k = 1 - Math.exp(-dt * 10), now = performance.now();
   for (const [sid, o] of others) {
     if (now - o.seen > 4000) { scene.remove(o.ch.root); others.delete(sid); game.others.delete(sid); continue; }
-    const p = o.ch.root.position; p.x += (o.tx - p.x) * k; p.y += (o.ty - p.y) * k; p.z += (o.tz - p.z) * k;
+    const p = o.ch.root.position; if (o.sitting) p.y -= SEAT;   // undo last frame's seat offset so it never accumulates
+    p.x += (o.tx - p.x) * k; p.y += (o.ty - p.y) * k; p.z += (o.tz - p.z) * k;
     let d = o.try - o.ch.root.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); o.ch.root.rotation.y += d * k;
     if (o.e && elephants[o.e - 1]) {   // riding: move that elephant, sit on its back
       const el = elephants[o.e - 1]; el.remote = now; setElephant(o.e - 1, p.x, p.z, o.ch.root.rotation.y, o.s, dt);
-      o.ch.root.position.y = p.y + SEAT; if (!o.sitting) { o.ch.play('Sit_Floor_Idle', 0.2); o.ch.locked = true; o.sitting = true; } o.ch.update(dt);
-    } else { if (o.sitting) { o.ch.locked = false; o.sitting = false; } o.ch.animate(dt, o.s, !!o.a); }
+      p.y += SEAT; if (!o.sitting) { o.ch.play('Sit_Floor_Idle', 0.2); o.ch.locked = true; o.sitting = true; } { const d = o.lod(o.ch.root, dt); if (d) o.ch.update(d); }
+    } else { if (o.sitting) { o.ch.locked = false; o.sitting = false; } const d = o.lod(o.ch.root, dt); if (d) o.ch.animate(d, o.s, !!o.a); }
   }
 }
 
@@ -150,13 +152,14 @@ export function showLeaderboard(rows) {
 export const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
 // ---------- position stream (8 Hz, only when changed) ----------
-let last = '', acc = 0;
+let last = '', acc = 0, lastAt = 0; const now2 = () => performance.now();
 export function netTick(dt) {
   updateOthers(dt);
   if (!net.online || (net.role !== 'student' && net.role !== 'teacher')) return;
   acc += dt; if (acc < 0.125) return; acc = 0;
   const msg = { t: 'pos', x: +me.x.toFixed(2), y: +me.y.toFixed(2), z: +me.z.toFixed(2), ry: +me.face.toFixed(2), s: +me.speed.toFixed(1), a: me.grounded ? 0 : 1, e: me.ride + 1, k: Math.floor(game.secs || 0) };
-  const key = JSON.stringify(msg); if (key === last) return; last = key; net.send(msg);
+  const { k: _k, ...rest } = msg, key = JSON.stringify(rest), beat = now2() - lastAt > 2000;   // idle: heartbeat every 2 s instead of every second tick
+  if (key === last && !beat) return; last = key; lastAt = now2(); net.send(msg);
 }
 
 export async function teacherLogin(password) {

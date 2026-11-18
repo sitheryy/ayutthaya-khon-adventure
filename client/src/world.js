@@ -67,6 +67,11 @@ export const animated = [];    // fns(t, dt)
 export const uTime = { value: 0 };
 export const distCull = [];     // roots hidden (no draw, no shadow, no skinning) beyond r metres from the player
 export const cullAt = (o, r = 100) => { distCull.push({ o, r }); return o; };
+// Far characters animate every 3rd frame (with the time they skipped), near ones every frame. main.js keeps `focus` on the camera.
+export const focus = { x: 0, z: 0, n: 0 };
+export const lodStep = (near = 40) => { let acc = 0; const ph = (Math.random() * 3) | 0; return (root, dt) => {
+  if (Math.hypot(root.position.x - focus.x, root.position.z - focus.z) < near) { acc = 0; return dt; }
+  acc += dt; if ((focus.n + ph) % 3) return 0; const r = acc; acc = 0; return r; }; };
 const circ = (x, z, r) => colliders.push({ x, z, r });
 const boxC = (x, z, hw, hd) => colliders.push({ x, z, hw, hd });
 
@@ -462,7 +467,8 @@ function zoneTheater(B, r, scene) {
     ch.root.rotation.y = Math.PI / 2;
     ch.root.scale.setScalar(1.9);
     scene.add(ch.root); cullAt(ch.root, 110);
-    animated.push((t, dt) => { if (ch.root.visible) ch.update(dt); });
+    const lod = lodStep();
+    animated.push((t, dt) => { if (ch.root.visible) { const d = lod(ch.root, dt); if (d) ch.update(d); } });
   });
 }
 // City wall (กำแพงเมือง) around the whole city. West/north/south are straight; the east wall runs on the far
@@ -950,7 +956,8 @@ function buildMascots(scene) {
     ch.root.position.set(x, groundHeight(x, z), z); ch.root.scale.setScalar(MASCOT_S);   // 1.7 m model -> ~3 m: clearly bigger than the players
     const tag = makeNameTag(def.name, def.sub.split(' · ')[0], '#ffe08a'); tag.position.y = 3.5 / MASCOT_S; tag.scale.multiplyScalar(1.1 / MASCOT_S); ch.root.add(tag);
     scene.add(ch.root); cullAt(ch.root, 80); colliders.push({ x, z, r: 0.9 }); NPCS.push({ def, x, z, i: 0 });
-    animated.push((t, dt) => { if (ch.root.visible) ch.update(dt); });
+    const lod = lodStep();
+    animated.push((t, dt) => { if (ch.root.visible) { const d = lod(ch.root, dt); if (d) ch.update(d); } });
   });
 }
 function buildLanterns(scene, r) {

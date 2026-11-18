@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import { ZONES, HALF, WALL_Z, colliders, groundHeight, isBlockedWater, cullAt } from './world.js';
+import { ZONES, HALF, WALL_Z, colliders, groundHeight, isBlockedWater, cullAt, lodStep } from './world.js';
 import { NPCS, talkingTo } from './npc.js';
 import { makeNameTag } from './character.js';
 
@@ -51,13 +51,26 @@ const CAST = [
 ];
 const R = 8;
 
-const blocked = (x, z) => isBlockedWater(x, z) || Math.abs(x) > HALF - 4 || z > WALL_Z - 5 || z < -HALF + 8
-  || colliders.some((c) => (c.r !== undefined ? Math.hypot(x - c.x, z - c.z) < c.r + 1.0 : Math.abs(x - c.x) < c.hw + 1.0 && Math.abs(z - c.z) < c.hd + 1.0));
+// colliders bucketed into 8 m cells (built once the world exists), so a blocked() test only looks at the colliders near the point
+const CELL = 8, grid = new Map(); let gridN = -1;
+const key = (i, j) => i * 4096 + j;
+function buildGrid() {
+  grid.clear(); gridN = colliders.length;
+  for (const c of colliders) {
+    const ex = (c.r !== undefined ? c.r : c.hw) + 1.5, ez = (c.r !== undefined ? c.r : c.hd) + 1.5;
+    for (let i = Math.floor((c.x - ex) / CELL); i <= Math.floor((c.x + ex) / CELL); i++) for (let j = Math.floor((c.z - ez) / CELL); j <= Math.floor((c.z + ez) / CELL); j++) { const k = key(i, j); (grid.get(k) || grid.set(k, []).get(k)).push(c); }
+  }
+}
+const hitCollider = (x, z) => { if (gridN !== colliders.length) buildGrid(); const l = grid.get(key(Math.floor(x / CELL), Math.floor(z / CELL))); return !!l && l.some((c) => (c.r !== undefined ? Math.hypot(x - c.x, z - c.z) < c.r + 1.0 : Math.abs(x - c.x) < c.hw + 1.0 && Math.abs(z - c.z) < c.hd + 1.0)); };
+const blocked = (x, z) => isBlockedWater(x, z) || Math.abs(x) > HALF - 4 || z > WALL_Z - 5 || z < -HALF + 8 || hitCollider(x, z);
 const clearLine = (x0, z0, x1, z1) => { for (let k = 1; k <= 6; k++) if (blocked(x0 + (x1 - x0) * k / 6, z0 + (z1 - z0) * k / 6)) return false; return true; };
 
 export async function spawnVillagers(scene, animated, me) {
   const loader = new GLTFLoader(), gl = {};   // each file is loaded once and cloned per villager
   const list = []; CAST.forEach((z) => z.cast.forEach((file, k) => { const a = (k / z.cast.length) * 6.28 + 0.7, d = z.cast.length > 1 ? 5 : 0; list.push({ file, at: [z.at[0] + Math.cos(a) * d, z.at[1] + Math.sin(a) * d], n: k }); }));
+  const order = ['guard', 'villager', 'old', 'child', 'vendor', 'monk'];   // small files first, the 2.5 MB monk last
+  list.sort((a, b) => order.indexOf(a.file) - order.indexOf(b.file));
+  await new Promise((r) => (window.requestIdleCallback ? requestIdleCallback(r, { timeout: 4000 }) : setTimeout(r, 2500)));   // let the world draw its first frames before streaming NPCs
   for (const it of list) {
     const T = TYPES[it.file]; if (!(it.file in gl)) { try { gl[it.file] = await loader.loadAsync(import.meta.env.BASE_URL + `models/npc_${it.file}.glb`); } catch { gl[it.file] = null; } }
     const g = gl[it.file]; if (!g) continue;
@@ -88,7 +101,7 @@ export async function spawnVillagers(scene, animated, me) {
         arm.parent.updateMatrixWorld(true);
       }
     }
-    let br = Math.random() * 6;
+    const lod = lodStep(); let br = Math.random() * 6;
     const stand = () => { walking = false; act.paused = true; for (const [o, p, q, sc] of rest) { o.position.copy(p); o.quaternion.copy(q); o.scale.copy(sc); } };
     const go = () => { walking = true; act.paused = false; };
     const pick = () => {   // next spot inside the home area
@@ -108,7 +121,7 @@ export async function spawnVillagers(scene, animated, me) {
         if (walking) {
           let dx = tx - npc.x, dz = tz - npc.z, dist = Math.hypot(dx, dz), step = def.speed * dt;
           if (dist < 0.4 || blocked(npc.x + dx / dist * step, npc.z + dz / dist * step)) { if (pick()) { dx = tx - npc.x; dz = tz - npc.z; dist = Math.hypot(dx, dz) || 1; } else stand(); }
-          if (walking) { npc.x += dx / dist * step; npc.z += dz / dist * step; turn(Math.atan2(dx, dz), dt * 5); mixer.update(dt); }
+          if (walking) { npc.x += dx / dist * step; npc.z += dz / dist * step; turn(Math.atan2(dx, dz), dt * 5); const ld = lod(root, dt); if (ld) mixer.update(ld); }
         }
       }
       if (!walking) { br += dt * 1.8; model.scale.y = 1 + Math.sin(br) * 0.006; } else model.scale.y = 1;
