@@ -161,14 +161,18 @@ export function gradePass() {
     fragmentShader: `uniform sampler2D tDiffuse; uniform vec2 uSun; uniform float uSunVis, uAspect, uAmt; varying vec2 vUv;
       void main(){
         vec3 c0 = texture2D(tDiffuse, vUv).rgb, c = c0;
-        c = mix(c, c * c * (3.0 - 2.0 * c), 0.28);                                   // contrast
+        // Japanese-photo tone: bright and airy, lifted blacks, low contrast, soft pastel colour, cool-green shadows, cream-pink lights
+        c *= 1.10;                                                                    // exposure up
+        c = mix(c, c * c * (3.0 - 2.0 * c), -0.12);                                   // flatter contrast
+        c = c * 0.88 + 0.10;                                                          // lift the blacks (milky shadows)
         float l = dot(c, vec3(0.299, 0.587, 0.114));
-        c = mix(vec3(l), c, 1.14);                                                   // saturation
-        c *= mix(vec3(0.96, 0.93, 1.06), vec3(1.07, 1.02, 0.92), smoothstep(0.15, 0.85, l));   // violet shadows, gold lights
+        c = mix(vec3(l), c, 0.90);                                                    // slightly softer saturation
+        c *= mix(vec3(0.94, 1.00, 1.04), vec3(1.04, 1.00, 0.98), smoothstep(0.2, 0.9, l));   // aqua shadows, warm cream lights
+        c = 1.0 - (1.0 - c) * (1.0 - vec3(0.07, 0.06, 0.07) * (0.4 + l));             // soft white haze
         vec2 q = vUv - 0.5; q.x *= uAspect;
-        c *= 1.0 - smoothstep(0.35, 0.95, length(q)) * 0.38 * vec3(0.9, 0.95, 1.0);   // vignette
+        c *= 1.0 - smoothstep(0.45, 1.0, length(q)) * 0.10;                           // very light vignette
         vec2 d = vUv - uSun; d.x *= uAspect; float r = length(d);
-        c += vec3(1.0, 0.78, 0.45) * (exp(-r * 5.0) * 0.20 + exp(-r * 18.0) * 0.18) * uSunVis;   // sun glare
+        c += vec3(1.0, 0.86, 0.72) * (exp(-r * 4.0) * 0.16 + exp(-r * 16.0) * 0.12) * uSunVis;   // soft sun glow
         gl_FragColor = vec4(mix(c0, c, uAmt), 1.0);
       }`,
   });
