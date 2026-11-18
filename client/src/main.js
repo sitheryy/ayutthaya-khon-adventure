@@ -17,7 +17,7 @@ import { Controls } from './controls.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
-const LOW = params.has('low') || (matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 500);
+const LOW = params.has('low');   // every device gets the full graphics; the player taps the ⚡ button for light mode
 
 // ---------- renderer / scene ----------
 const canvas = $('game');
@@ -319,6 +319,7 @@ const PIXEL_RATIO = Math.min(devicePixelRatio, LOW ? 1.25 : 1.75);
 function setLight(on) {
   light = on; try { localStorage.setItem('khon-light', on ? '1' : '0'); } catch {}
   renderer.setPixelRatio(on ? 1 : PIXEL_RATIO); sun.castShadow = !on; scene.fog.far = on ? 320 : 600;
+  canvas.style.filter = on || LOW ? 'brightness(1.08) contrast(0.86) saturate(0.9)' : '';   // cheap stand-in for the Japanese-tone grade (the real one needs the effects pipeline)
   $('btn-light').textContent = on ? '⚡ ภาพเบา: เปิด' : '⚡ ภาพเบา: ปิด'; $('btn-light').classList.toggle('on', on); resize();
 }
 $('btn-light').onclick = () => setLight(!light); setLight(light);
