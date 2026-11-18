@@ -33,7 +33,7 @@ tform.addEventListener('submit', async (e) => {
   if (!online) { $('teacher-err').textContent = 'เชื่อมต่อห้องเรียนไม่ได้'; return; }
   startPlaying({ name: 'คุณครู', no: '-', cls: 'ครู' });
   hookNet();
-  (await import('./teacher.js')).startTeacher(r.token);
+  (await import('./teacher.js')).startTeacher(r.token); $('btn-exit').classList.add('hidden');
   (await import('./treasure.js')).startTreasureHunt({ online: false, seed: 'TEACHER', gated: true });   // teacher plays too (own chests, not on the leaderboard)
 });
 
@@ -49,3 +49,10 @@ async function checkUpdate() {
 }
 checkUpdate();
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
+
+// exit button (students): confirm, then back to the login screen. The server keeps score/chests, so the same name/number/class resumes later.
+$('btn-exit').onclick = () => {
+  if (net.role === 'teacher') return;
+  if (!confirm('ออกจากเกมใช่ไหม?\nคะแนนและสมบัติของคุณยังอยู่ กลับมาใส่ชื่อเดิมเพื่อเล่นต่อได้')) return;
+  net.leaving = true; try { net.ws?.close(); } catch {} location.reload();
+};
