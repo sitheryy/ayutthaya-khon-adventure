@@ -141,13 +141,19 @@ export function makeKhon(role, opts = {}) {
   const mixer = new THREE.AnimationMixer(model), act = mixer.clipAction(g.animations.find((c) => c.name === 'Walking'));
   act.play(); mixer.setTime(0.01); act.paused = true;
   let ph = Math.random() * 6;
-  const dance = opts.dance ? khonDance(model, root) : null;
+  const dance = (opts.dance || opts.pose) ? khonDance(model, root, opts.pose) : null;
   return { root, mixer, update(dt) { ph += dt * 1.6; if (dance) dance(dt, opts.phase || 0); else model.scale.y = 1 + Math.sin(ph) * 0.006; } };
 }
 // Khon dance on the stage, driven in code (the models only come with Walking/Running): knees bend and each foot lifts in turn,
 // arms are held out and bent up (ตั้งวง) and swap which one is higher, head tilts. Deltas are in character space (X = its left,
 // Y up, Z = forward) and applied parent-first, so the Mixamo bone axes do not matter.
-function khonDance(model, root) {
+export const KHON_POSES = {   // standing poses (ท่ายืน) of the four Khon types; angles in radians, see khonDance
+  sida:      { abd: 0.12, knee: 0.2,  fwdL: 0.12, fwdR: 0,    armL: 0.5,  foreL: 1.15, armR: 0.3,  foreR: 0.75, lean: 0,    tilt: 0.14 },   // ตัวนาง: soft, one foot eased forward, hands at the chest
+  rama:      { abd: 0.3,  knee: 0.45, fwdL: 0.2,  fwdR: 0,    armL: 1.0,  foreL: 0.95, armR: 0.55, foreR: 0.6,  lean: 0,    tilt: 0.1 },    // ตัวพระ: knees bent, one hand high (วงบน), one low (วงล่าง)
+  thotsakan: { abd: 0.6,  knee: 0.75, fwdL: 0,    fwdR: 0,    armL: 1.15, foreL: 0.5,  armR: 1.15, foreR: 0.5,  lean: 0.08, tilt: 0 },      // ตัวยักษ์: wide stance, elbows out (เหลี่ยม)
+  hanuman:   { abd: 0.35, knee: 0.85, fwdL: 0.5,  fwdR: 0.5,  armL: 1.7,  foreL: 0.4,  armR: 0.45, foreR: -0.9, lean: 0.25, tilt: 0.12 },   // ตัวลิง: crouched, one hand up, one on the hip
+};
+function khonDance(model, root, pose) {
   const bone = (n) => model.getObjectByName('mixamorig' + n);
   const L = { arm: bone('LeftArm'), fore: bone('LeftForeArm'), up: bone('LeftUpLeg'), leg: bone('LeftLeg') };
   const R = { arm: bone('RightArm'), fore: bone('RightForeArm'), up: bone('RightUpLeg'), leg: bone('RightLeg') };
@@ -157,11 +163,23 @@ function khonDance(model, root) {
   const rest = new Map(all.map((b) => [b, b.quaternion.clone()]));
   const X = new THREE.Vector3(1, 0, 0), Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3(0, 0, 1), q = new THREE.Quaternion(), pq = new THREE.Quaternion(), rq = new THREE.Quaternion(), ax = new THREE.Vector3();
   let T = 0;
+  const footY = () => { model.updateMatrixWorld(true); const v = new THREE.Vector3(); return Math.min(...['LeftFoot', 'RightFoot'].map((n) => { bone(n).getWorldPosition(v); return model.worldToLocal(v).y; })); };
+  const restFoot = footY();
   const swing = (b, ...rots) => {   // rots = [axis, angle] pairs, composed in order
     b.parent.updateWorldMatrix(true, false); b.parent.getWorldQuaternion(pq);
     q.identity(); for (const [axis, ang] of rots) { ax.copy(axis).applyQuaternion(rq); q.premultiply(new THREE.Quaternion().setFromAxisAngle(ax, ang)); }
     b.quaternion.copy(pq).invert().multiply(q).multiply(pq.clone().invert().invert()).multiply(rest.get(b));
   };
+  if (pose) {   // static stance with a slow breathing sway; the body is lowered so the feet stay on the ground
+    return (dt) => {
+      T += dt; const br = Math.sin(T * 1.6), P = pose; model.getWorldQuaternion(rq); model.position.y = 0;
+      swing(spine, [X, P.lean * 0.6 + 0.01 * br], [Z, 0.02 * br]); swing(spine2, [X, P.lean * 0.4]);
+      swing(L.up, [Z, P.abd], [X, -P.fwdL]); swing(L.leg, [X, P.knee]); swing(R.up, [Z, -P.abd], [X, -P.fwdR]); swing(R.leg, [X, P.knee]);
+      swing(L.arm, [Z, P.armL + 0.03 * br], [X, -0.2]); swing(L.fore, [Z, P.foreL]); swing(R.arm, [Z, -P.armR - 0.03 * br], [X, -0.2]); swing(R.fore, [Z, -P.foreR]);
+      swing(head, [Z, P.tilt]);
+      model.position.y = restFoot - footY();
+    };
+  }
   return (dt, off) => {
     T += dt; const w = (2 * Math.PI) / 3.2, s = Math.sin(w * T + off), lift = Math.max(0, s), liftR = Math.max(0, -s);
     model.getWorldQuaternion(rq);

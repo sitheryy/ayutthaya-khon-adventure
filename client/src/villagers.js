@@ -42,12 +42,12 @@ const TYPES = {
 };
 // who lives where: a mix of types per zone, each spread around the zone's anchor
 const CAST = [
-  { at: [ZONES[0].x + 10, ZONES[0].z + 14], cast: ['monk', 'monk', 'villager'] },
-  { at: [ZONES[1].x, ZONES[1].z + 30], cast: ['guard', 'guard', 'old'] },
-  { at: [ZONES[2].x - 8, ZONES[2].z + 6], cast: ['vendor', 'vendor', 'villager', 'child'] },
-  { at: [ZONES[3].x + 8, ZONES[3].z - 4], cast: ['villager', 'old', 'child'] },
-  { at: [ZONES[4].x + 14, ZONES[4].z + 8], cast: ['child', 'villager', 'vendor'] },
-  { at: [ZONES[5].x, WALL_Z - 17], cast: ['guard', 'guard', 'vendor'] },
+  { at: [ZONES[0].x + 10, ZONES[0].z + 14], cast: ['monk'] },
+  { at: [ZONES[1].x, ZONES[1].z + 30], cast: ['old'] },
+  { at: [ZONES[2].x - 8, ZONES[2].z + 6], cast: ['vendor'] },
+  { at: [ZONES[3].x + 8, ZONES[3].z - 4], cast: ['villager'] },
+  { at: [ZONES[4].x + 14, ZONES[4].z + 8], cast: ['child'] },
+  { at: [ZONES[5].x, WALL_Z - 17], cast: ['guard'] },
 ];
 const R = 8;
 
@@ -73,13 +73,10 @@ export async function spawnVillagers(scene, animated, me) {
     const mixer = new THREE.AnimationMixer(model), act = mixer.clipAction(g.animations[0]); act.play();
     const npc = { def, x: hx, z: hz, i: Math.floor(Math.random() * def.facts.length) }; NPCS.push(npc);
     let tx = hx, tz = hz, wait = Math.random() * 3, walking = false, yaw = Math.random() * 6.28;
-    // no idle clip in the models: stand still on the frame of the walk where the feet are closest together (legs under the body)
-    const feet = []; model.traverse((o) => { if (o.isBone && /(Left|Right)Foot$/.test(o.name)) feet.push(o); });
-    let idleT = 0; if (feet.length === 2) {
-      const dur = act.getClip().duration, pa = new THREE.Vector3(), pb = new THREE.Vector3(); let best = 1e9;
-      for (let k = 0; k < 48; k++) { act.time = (k / 48) * dur; mixer.update(0); model.updateMatrixWorld(true); const d = feet[0].getWorldPosition(pa).distanceTo(feet[1].getWorldPosition(pb)); if (d < best) { best = d; idleT = act.time; } }
-    }
-    const stand = () => { walking = false; act.time = idleT; act.paused = false; mixer.update(0); act.paused = true; };
+    // standing pose = the model's own rest pose (arms down): the clip is only a walk, so any frozen frame looks mid-stride
+    const rest = []; model.traverse((o) => { if (o.isBone) rest.push([o, o.position.clone(), o.quaternion.clone(), o.scale.clone()]); });
+    let br = Math.random() * 6;
+    const stand = () => { walking = false; act.paused = true; for (const [o, p, q, sc] of rest) { o.position.copy(p); o.quaternion.copy(q); o.scale.copy(sc); } };
     const go = () => { walking = true; act.paused = false; };
     stand();
     root.position.set(hx, groundHeight(hx, hz), hz); root.rotation.y = yaw; scene.add(root); cullAt(root, 80);
@@ -97,6 +94,7 @@ export async function spawnVillagers(scene, animated, me) {
         for (let k = 0; k < 8; k++) { const a = Math.random() * 6.28, d = 2 + Math.random() * def.r, x = hx + Math.cos(a) * d, z = hz + Math.sin(a) * d; if (!blocked(x, z) && clearLine(npc.x, npc.z, x, z)) { tx = x; tz = z; go(); break; } }
         wait = 1 + Math.random() * 2;
       }
+      if (!walking) { br += dt * 1.8; model.scale.y = 1 + Math.sin(br) * 0.006; } else model.scale.y = 1;
       root.position.set(npc.x, groundHeight(npc.x, npc.z), npc.z); root.rotation.y = yaw;
     });
   }

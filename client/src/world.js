@@ -41,7 +41,7 @@ function model(name, x, z, ry = 0, sc = 1, collide = true, face = null) {
 }
 // jar beside a house (left side, toward the back), never on a road
 function jarBeside(h, name, sc) { const [w, d] = MSIZE[name]; const [jx, jz] = wpos(h.x, h.z, h.ry, (w / 2 + 1.2) * sc, -d * 0.2 * sc); if (pathClear(jx, jz, 0.6)) model('thai_jar', jx, jz, 0, 1.2); }
-import { makeCharacter, studentLook, ROLE_LOOKS, makeKhon, prop, propStatic, propParts, makeAnimal, getModel } from './models.js';
+import { makeCharacter, studentLook, ROLE_LOOKS, makeKhon, KHON_POSES, prop, propStatic, propParts, makeAnimal, getModel } from './models.js';
 import { NPC_DEFS, NPCS } from './npc.js';
 import { makeNameTag } from './character.js';
 
@@ -931,7 +931,7 @@ function placeBig(scene, { name, x, z, h, base, ry = 0 }) {
 const MASCOT_S = 1.75;
 function buildMascots(scene) {
   NPC_DEFS.forEach((def) => {
-    const x = SPAWN.x + def.dx, z = SPAWN.z - 7, ch = makeKhon(def.role);
+    const x = SPAWN.x + def.dx, z = SPAWN.z - 7, ch = makeKhon(def.role, { pose: KHON_POSES[def.role] });
     ch.root.position.set(x, groundHeight(x, z), z); ch.root.scale.setScalar(MASCOT_S);   // 1.7 m model -> ~3 m: clearly bigger than the players
     const tag = makeNameTag(def.name, def.sub.split(' · ')[0], '#ffe08a'); tag.position.y = 3.5 / MASCOT_S; tag.scale.multiplyScalar(1.1 / MASCOT_S); ch.root.add(tag);
     scene.add(ch.root); cullAt(ch.root, 80); colliders.push({ x, z, r: 0.9 }); NPCS.push({ def, x, z, i: 0 });

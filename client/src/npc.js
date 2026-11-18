@@ -26,7 +26,7 @@ export const NPC_DEFS = [
 
 export const NPCS = [];   // filled by world.js: { def, x, z, i }
 const $ = (id) => document.getElementById(id);
-let cur = null, hiddenAt = 0;
+let cur = null, hiddenAt = 0, near = null;   // near = the NPC the talk button is offering
 const NEAR = 5.2, FAR = 7;
 
 function render() {
@@ -44,17 +44,22 @@ function wire() {
   const el = $('npc-say');
   const next = (e) => { e.preventDefault(); e.stopPropagation(); if (!cur) return; cur.i = (cur.i + 1) % cur.def.facts.length; render(); };
   el.addEventListener('pointerup', next);
+  const talk = (e) => { e.preventDefault(); e.stopPropagation(); if (near && !cur) { show(near); $('btn-talk').classList.add('hidden'); } };
+  $('btn-talk').addEventListener('pointerup', talk);
+  window.addEventListener('keydown', (e) => { if (e.code === 'KeyT' && near && !cur) { show(near); $('btn-talk').classList.add('hidden'); } });
 }
 
 // called every frame with the player; `busy` = a quiz / overlay is open
 export function updateNpc(me, busy) {
   if (!NPCS.length) return;
   if (!wired) wire();
-  if (busy) { if (cur) hide(); return; }
+  const btn = $('btn-talk');
+  if (busy) { if (cur) hide(); near = null; btn.classList.add('hidden'); return; }
   let best = null, bd = 1e9;
   for (const n of NPCS) { const d = Math.hypot(n.x - me.x, n.z - me.z); if (d < bd) { bd = d; best = n; } }
-  if (cur) { if (Math.hypot(cur.x - me.x, cur.z - me.z) > FAR) hide(); }
-  else if (bd < NEAR && best !== null && performance.now() - hiddenAt > 600) show(best);
+  if (cur) { if (Math.hypot(cur.x - me.x, cur.z - me.z) > FAR) hide(); near = null; btn.classList.add('hidden'); return; }
+  near = bd < NEAR ? best : null;
+  if (near) { const t = `💬 คุยกับ${near.def.name}`; if (btn.dataset.t !== t) { btn.dataset.t = t; btn.textContent = t; } btn.classList.remove('hidden'); } else btn.classList.add('hidden');
 }
 // distance to the nearest NPC, so far-away ones can skip their animation
 export function nearestNpcDist(x, z) { let d = 1e9; for (const n of NPCS) d = Math.min(d, Math.hypot(n.x - x, n.z - z)); return d; }
