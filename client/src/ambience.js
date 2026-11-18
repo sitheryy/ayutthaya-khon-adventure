@@ -34,7 +34,7 @@ export function updateAmbience(ctx, me, muted) {
     night: 0.08 + 0.17 * Math.max(forest, rice),        // evening: crickets and frogs, loud by the paddies
     water: water * 0.95,
     wind: 0.22 + 0.1 * Math.min(1, me.y / 6),           // a little stronger up on terraces
-    music: 0.42,                                        // background music everywhere
+    music: 0.28,                                        // background music everywhere
   };
   const t = ctx.currentTime;
   master.gain.setTargetAtTime(muted ? 0 : 0.55, t, 0.3);

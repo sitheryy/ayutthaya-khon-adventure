@@ -118,7 +118,7 @@ function detector(dt, t) {
   if (wandGem) { const c = new THREE.Color(`hsl(${hue},100%,65%)`); wandGem.material.color.copy(c); wandGem.material.emissive.setHSL(hue / 360, 1, 0.5); wandGem.userData.halo.material.color.copy(c); }
   const ang = Math.atan2(n.c.x - me.x, n.c.z - me.z) - (controls.yaw + Math.PI);
   arrow.style.transform = `rotate(${-ang}rad)`; arrow.style.opacity = d < 45 ? 1 : 0.35;
-  if (t >= st.nextBeep) { st.nextBeep = t + interval; st.blinkT = 0.08; if (!st.muted && !st.busy) beep(560 + (1 - k) * 760, 0.06, 0.035 + (1 - k) * 0.035, 'sine'); }
+  if (t >= st.nextBeep) { st.nextBeep = t + interval; st.blinkT = 0.08; if (!st.muted && !st.busy) beep(560 + (1 - k) * 760, 0.07, 0.06 + (1 - k) * 0.05, 'sine'); }
   st.blinkT -= dt;
   const on = st.blinkT > 0;
   gem.classList.toggle('on', on);
