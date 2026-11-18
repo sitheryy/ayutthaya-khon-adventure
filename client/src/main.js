@@ -9,6 +9,7 @@ import { updateCycle } from './cycle.js';
 import { buildLife } from './life.js';
 import { startAmbience, updateAmbience } from './ambience.js';
 import { spawnNaga } from './naga.js';
+import { spawnVillagers } from './villagers.js';
 import { spawnElephants, nearestElephant, setElephant, animateElephants, elephants, SEAT, wanderElephants, setAnchor, eleClock } from './elephant.js';
 import { CITY, SUN_DIR, buildWorld, buildSky, ZONES, SPAWN, HALF, WALL_Z, colliders, animated, distCull, uTime, groundHeight, isBlockedWater, zoneAt, riverX, PATHS, waters, surfaceAt } from './world.js';
 import { makeNameTag } from './character.js';
@@ -59,6 +60,7 @@ loginBtn.disabled = false; loginBtn.textContent = 'เข้าสู่โล�
 
 // ---------- player ----------
 export const me = { ride: -1, x: SPAWN.x, z: SPAWN.z, y: 0, vy: 0, face: Math.PI, speed: 0, grounded: true, look: 0, name: '', no: '', cls: '' };
+spawnVillagers(scene, animated, me);   // strolling NPCs that chat about Khon (models stream in after the world is up)
 let avatar = null;
 function spawnAvatar() {
   if (avatar) scene.remove(avatar.root);
