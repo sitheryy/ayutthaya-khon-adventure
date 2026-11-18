@@ -290,9 +290,13 @@ function footsteps(dt) {
 function resize() {
   // The canvas CSS box and the render buffer must share ONE size, or iOS stretches the picture / leaves a bar:
   // take the biggest of visual viewport, layout viewport and (installed app only) the real screen.
-  const vv = window.visualViewport, standalone = navigator.standalone || matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches;
+  const vv = window.visualViewport;
   let w = Math.round(Math.max(vv?.width || 0, innerWidth)), h = Math.round(Math.max(vv?.height || 0, innerHeight));
-  if (standalone) { const long = Math.max(screen.width, screen.height), short = Math.min(screen.width, screen.height), land = w >= h; h = Math.max(h, land ? short : long); w = Math.max(w, land ? long : short); }
+  // iPad app/fullscreen mode reports a window ~24 px shorter than the screen (home-indicator strip): fill it
+  if (matchMedia('(pointer: coarse)').matches) {
+    const long = Math.max(screen.width, screen.height), short = Math.min(screen.width, screen.height), land = w >= h, tw = land ? long : short, th = land ? short : long;
+    if (th - h > 0 && th - h <= 48) h = th; if (tw - w > 0 && tw - w <= 48) w = tw;
+  }
   renderer.setSize(w, h, true); camera.aspect = w / h; camera.updateProjectionMatrix();
   renderer.getDrawingBufferSize(STYLE.uRes.value);
   composer?.setSize(w, h); tilt?.setSize(STYLE.uRes.value.x, STYLE.uRes.value.y);
