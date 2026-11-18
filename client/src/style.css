@@ -144,7 +144,7 @@ html:fullscreen body.touch #net-badge, html:-webkit-full-screen body.touch #net-
 #prompt, #prompt-ride { pointer-events: auto; cursor: pointer; user-select: none; }
 body.touch #prompt, body.touch #prompt-ride { font-size: 22px; padding: 14px 30px; background: rgba(60,30,8,.85); box-shadow: 0 0 18px rgba(255,210,90,.6); }
 .k-touch { display: none; } body.touch .k-touch { display: inline; } body.touch .k-key { display: none; }
-#tpanel { top: calc(220px + env(safe-area-inset-top)); max-height: calc(100vh - 230px); }
+#tpanel { top: calc(250px + env(safe-area-inset-top)); max-height: calc(100vh - 260px); }
 #cert { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.7); display: flex; align-items: center; justify-content: center; padding: 12px; pointer-events: auto; }
 #cert.hidden { display: none; }
 .cert-box { width: min(900px, 100%); max-height: 100%; display: flex; flex-direction: column; gap: 10px; align-items: center; }
@@ -162,7 +162,7 @@ html, body { background: #2a1a0e; }
   #zone-banner { right: calc(108px + env(safe-area-inset-right)); top: 8px; padding: 4px 10px; } #zone-name { font-size: 14px; } #zone-sub { display: none; }
   body.touch #detector { bottom: calc(10px + env(safe-area-inset-bottom)); padding: 3px 12px 3px 6px; gap: 6px; } #det-gem { width: 22px; height: 22px; } #det-text { font-size: 12px; min-width: 80px; }
   body.touch #prompt, body.touch #prompt-ride { bottom: 62px; font-size: 16px; padding: 8px 20px; }
-  #tpanel { top: calc(124px + env(safe-area-inset-top)); width: min(300px, 55vw); max-height: calc(100vh - 134px); font-size: 12px; padding: 6px 8px; }
+  #tpanel { top: calc(152px + env(safe-area-inset-top)); width: min(300px, 55vw); max-height: calc(100vh - 162px); font-size: 12px; padding: 6px 8px; }
   .tb { padding: 5px; font-size: 12px; } .tp-head { font-size: 14px; margin-bottom: 4px; } .tp-btns, .tp-row { gap: 4px; margin-bottom: 4px; }
   .quiz-card { max-height: 97vh; padding: 8px 12px; } .quiz-head { font-size: 14px; margin-bottom: 2px; } #quiz-q { font-size: 15px; margin-bottom: 6px; }
   #quiz-opts { grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 4px; } #quiz-opts button { font-size: 13px; padding: 6px 8px; } #quiz-timer { margin: 2px 0 6px; } #quiz-res { margin-top: 4px; font-size: 13px; }
