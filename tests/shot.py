@@ -19,6 +19,6 @@ async def main():
             elif a.startswith('wait:'): await pg.wait_for_timeout(int(a[5:]))
         await pg.wait_for_timeout(1500)
         await pg.screenshot(path=out, timeout=180000)
-        print('\n'.join([l for l in logs if 'WebGLProgram' in l or 'ERROR' in l][:6] or logs[-15:]))
+        print('\n'.join([l for l in logs if 'PROBE' in l] + ([l for l in logs if 'WebGLProgram' in l or 'ERROR' in l][:6] or logs[-15:])))
         await b.close()
 asyncio.run(main())
