@@ -275,7 +275,7 @@ Sfx.jump = () => beep(520, 0.12, 0.06, 'triangle');
 // footsteps: synthesised per surface (no audio files)
 let noiseBuf = null;
 function stepSound(kind, run) {
-  const a = audio(), t0 = a.currentTime, v = run ? 1.25 : 1;
+  const a = audio(), t0 = a.currentTime, v = (run ? 1.25 : 1) * 0.6;   // 0.6: footsteps quieter
   if (!noiseBuf) { noiseBuf = a.createBuffer(1, a.sampleRate * 0.3, a.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
   const P = { dirt: ['lowpass', 700, 0.09, 0.30], grass: ['bandpass', 3000, 0.12, 0.16], brick: ['bandpass', 1500, 0.05, 0.34], stone: ['highpass', 3200, 0.035, 0.30], wood: ['bandpass', 520, 0.08, 0.40] }[kind];
   const src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
