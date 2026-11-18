@@ -129,7 +129,8 @@ export function buildNatureGrass(scene, { patch = 60, uTime }) {
           vec3 lp = vec3(position.x * ca - position.z * sa, position.y, position.x * sa + position.z * ca) * sc;
           vec2 w = windAt(wp, uTime) * position.y * position.y * sc * 1.8;
           vec2 away = wp - uPlayer.xz; float pd = length(away);
-          w += (away / max(pd, 0.001)) * smoothstep(1.3, 0.2, pd) * position.y * sc * 0.7;
+          float air = 1.0 - smoothstep(0.12, 0.8, uPlayer.y - tr.r);   // airborne: no parting
+          w += (away / max(pd, 0.001)) * smoothstep(1.3, 0.2, pd) * position.y * sc * 0.7 * air;
           vec3 transformed = vec3(wp.x + lp.x + w.x, tr.r + lp.y - dot(w, w) * 0.15, wp.y + lp.z + w.y);
           if (mask < 0.02) transformed.y -= 50.0;
           vH = position.y; vVar = tr.b;`);
