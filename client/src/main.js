@@ -12,6 +12,7 @@ import { spawnNaga } from './naga.js';
 import { spawnElephants, nearestElephant, setElephant, animateElephants, elephants, SEAT, wanderElephants, setAnchor, eleClock } from './elephant.js';
 import { CITY, SUN_DIR, buildWorld, buildSky, ZONES, SPAWN, HALF, WALL_Z, colliders, animated, uTime, groundHeight, isBlockedWater, zoneAt, riverX, PATHS, waters, surfaceAt } from './world.js';
 import { makeNameTag } from './character.js';
+import { loadNature } from './nature.js';
 import { loadAssets, makeCharacter, studentLook, STUDENT_LOOKS } from './models.js';
 import { Controls } from './controls.js';
 
@@ -44,6 +45,7 @@ const loginBtn = document.querySelector('#form-login button');
 loginBtn.disabled = true; loginBtn.textContent = 'กำลังโหลดโลก... 0%';
 await document.fonts.load('600 58px Mitr').catch(() => {});
 await loadAssets((p) => (loginBtn.textContent = `กำลังโหลดโลก... ${Math.round(p * 100)}%`));
+if (!LOW && !params.has('oldnature')) await loadNature().catch((e) => console.warn('nature models failed', e));
 buildSky(scene);
 const { grass } = buildWorld(scene, { low: LOW });
 spawnElephants(scene, [[14, 36, 0.6], [-18, 6, -2.2]]);

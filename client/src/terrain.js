@@ -66,7 +66,7 @@ export function terrainTexture() {
 
 // ---------------- colors (shared by ground + grass so they blend) ----------------
 export const GRASS = { a: new THREE.Color('#4f9e2f'), b: new THREE.Color('#8fc93a'), tip: new THREE.Color('#d6e86a') };
-let TT = null; const terrainTex = () => (TT ||= terrainTexture());
+let TT = null; export const terrainTex = () => (TT ||= terrainTexture());
 
 // Ground: vertex colors + world-space detail noise + stone slabs on plazas; under-grass floor sits in shadow (Bruno trick)
 export function buildGroundMesh(scene, { pathColorAt, isSlab }) {

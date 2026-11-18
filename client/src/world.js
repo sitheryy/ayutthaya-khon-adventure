@@ -6,6 +6,7 @@ import { SKY, NIGHT, EVENING_DIR } from './cycle.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { bakeTerrain, stampMask, stampBox, finalizeMask, terrainH, grassAt, buildGroundMesh, buildGrass, buildWaterSurface } from './terrain.js';
 import { buildFoliage } from './foliage.js';
+import { NAT, buildNatureTrees, buildNatureGrass } from './nature.js';
 import { torches } from './effects.js';
 const FOL = { trees: [], bushes: [] };
 // user-supplied Thai house pack (CGTrader, royalty free) placed as models; footprint sizes from tools/obj2glb.mjs
@@ -326,9 +327,11 @@ function stall(B, x, z, r) {
   for (let i = 0; i < 6; i++) B.put(SPH(0.25, 6, 5), ['#ff6b3d', '#ffd23f', '#8bd450', '#c0392b'][(r() * 4) | 0], x - 1 + r() * 2, 1.15, z - 0.6 + r() * 1.2);
   circ(x, z, 1.7);
 }
+const hashRy = (x, z) => ((Math.sin(x * 12.9 + z * 78.2) * 43758.5) % 1 + 1) % 1 * 6.28;
 function tree(B, x, z, r, s = 1) {
   const h = (2.4 + r() * 1.4) * s, gy = terrainH(x, z) - 0.2;
-  B.put(CYL(0.26 * s, 0.4 * s, h + 1, 6), C.trunk, x, gy + (h + 1) / 2, z);
+  if (NAT.on) NAT.trees.push({ x, y: gy + 0.15, z, h: h + 3.1 * s });   // MegaKit tree replaces trunk + leaf balls (the r() calls below still run so the rest of the layout is unchanged)
+  else B.put(CYL(0.26 * s, 0.4 * s, h + 1, 6), C.trunk, x, gy + (h + 1) / 2, z);
   const n = 2 + ((r() * 2) | 0);
   for (let i = 0; i < n; i++) {
     const a = r() * Math.PI * 2, d = i === 0 ? 0 : 1.3 * s, rr = (1.9 + r() * 0.8) * s;
@@ -853,6 +856,7 @@ function buildScatter(scene, r) {
     const x = (r() * 2 - 1) * HALF, z = (r() * 2 - 1) * HALF; if (!free(x, z, 1.5)) continue;
     (r() < 0.6 ? bushes : rocks).push([x, terrainH(x, z) - 0.15, z, r() * 6, 0.6 + r() * 0.9]);
   }
+  if (NAT.on) for (const [x, y, z, , sc] of [...bushes, ...berries]) NAT.bushes.push({ x, y: y + 0.1, z, h: 1.5 * sc, ry: hashRy(x, z) });
   for (const [x, y, z, ry, sc] of [...bushes, ...berries]) FOL.bushes.push({ x, y: y + 0.55 * sc, z, s: 1.05 * sc, sy: 0.75, ry, tint: 0.9 + r() * 0.2 });
   ['Rock_Moss_1', 'Rock_Moss_2', 'Rock_Moss_3'].forEach((n, i) => instanceProp(scene, n, rocks.filter((_, j) => j % 3 === i), 1.6, 1.2));
   // lilypads on the forest pond
@@ -1012,12 +1016,15 @@ export function buildWorld(scene, { low = false } = {}) {
     colliders.push({ x, z, r: 0.6 });
     animated.push((t, dt) => ch.update(dt));
   });
-  buildFoliage(scene, FOL.trees, { colorA: '#2c6a2e', colorB: '#b7e05c', uTime, planes: low ? 80 : 170, seed: 3 });
-  buildFoliage(scene, FOL.bushes, { colorA: '#2f6f2a', colorB: '#c4e65a', uTime, planes: low ? 60 : 120, seed: 9 });
+  if (NAT.on) buildNatureTrees(scene, uTime);
+  else {
+    buildFoliage(scene, FOL.trees, { colorA: '#2c6a2e', colorB: '#b7e05c', uTime, planes: low ? 80 : 170, seed: 3 });
+    buildFoliage(scene, FOL.bushes, { colorA: '#2f6f2a', colorB: '#c4e65a', uTime, planes: low ? 60 : 120, seed: 9 });
+  }
   buildLeafLitter(scene, r, low);
   buildLanterns(scene, r);
   buildRice(scene, r, low);
   buildWaterfall(scene);
-  const grass = buildGrass(scene, { sub: low ? 170 : 300, patch: low ? 38 : 60, uTime });
+  const grass = NAT.on ? buildNatureGrass(scene, { patch: 60, uTime }) : buildGrass(scene, { sub: low ? 170 : 300, patch: low ? 38 : 60, uTime });
   return { grass };
 }
