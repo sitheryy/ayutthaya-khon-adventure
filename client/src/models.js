@@ -183,6 +183,15 @@ function sharedMat(src, vc, tint) {
   if (!mat) { mat = new THREE.MeshLambertMaterial({ color: src.color, map: src.map || null, vertexColors: vc }); if (tint) mat.color.multiplyScalar(tint); matCache.set(k, mat); }
   return mat;
 }
+// meshopt-compressed models keep quantised (normalised int) attributes; applyMatrix4 would clamp them to [-1,1] and wreck the shape, so go to float first
+function floatGeo(g) {
+  for (const n of ['position', 'normal', 'uv', 'color']) {
+    const a = g.attributes[n]; if (!a || a.array instanceof Float32Array) continue;
+    const f = new Float32Array(a.count * a.itemSize); for (let i = 0; i < a.count; i++) for (let k = 0; k < a.itemSize; k++) f[i * a.itemSize + k] = a.getComponent(i, k);
+    g.setAttribute(n, new THREE.BufferAttribute(f, a.itemSize));
+  }
+  return g;
+}
 // A static prop (no skeleton, no child lookups): bakes all meshes that share a material into ONE mesh -> far fewer draw calls (and shadow draws).
 export function propStatic(name, opts) {
   const o = prop(name, opts); if (!o) return o;
@@ -192,7 +201,7 @@ export function propStatic(name, opts) {
     if (list.length < 2) continue;
     const keep = ['position', 'normal', 'uv', 'color'].filter((a) => list.every((m) => m.geometry.attributes[a]));
     const geos = list.map((m) => {
-      const g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
+      const g = floatGeo(m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone());
       for (const a of Object.keys(g.attributes)) if (!keep.includes(a)) g.deleteAttribute(a);
       return g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld));
     });
@@ -220,7 +229,7 @@ export function propAnimations(name) { return cache[name]?.animations || []; }
 export function propParts(name) {
   const parts = []; const g = cache[name]; if (!g) return parts;
   g.scene.updateMatrixWorld(true);
-  g.scene.traverse((m) => { if (m.isMesh) { const geo = m.geometry.clone(); geo.applyMatrix4(m.matrixWorld); parts.push({ geo, mat: new THREE.MeshLambertMaterial({ color: m.material.color, map: m.material.map || null }) }); } });
+  g.scene.traverse((m) => { if (m.isMesh) { const geo = floatGeo(m.geometry.clone()); geo.applyMatrix4(m.matrixWorld); parts.push({ geo, mat: new THREE.MeshLambertMaterial({ color: m.material.color, map: m.material.map || null }) }); } });
   return parts;
 }
 

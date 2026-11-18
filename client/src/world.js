@@ -409,7 +409,9 @@ function zoneMarket(B, r) {
   B.put(BOX(PIER.x1 - PIER.x0, 0.35, PIER.z1 - PIER.z0), C.woodL, (PIER.x0 + PIER.x1) / 2, 0.42, (PIER.z0 + PIER.z1) / 2);
   for (let px = PIER.x0 + 2; px < PIER.x1; px += 4) [PIER.z0, PIER.z1].forEach((pz) => B.put(CYL(0.15, 0.15, 3, 5), C.woodD, px, -0.3, pz));
   model('thai_sala', x - 30, z + 20, 0, 1.4);
-  for (let i = 0; i < 6; i++) banner(B, x - 22 + i * 9, z - 26, UMB[i], 5);
+  // umbrella banners along the north edge, skipping any that would stand inside a river house
+  const hz0 = (i) => z - 40 + i * 12, nearHouse = (bx, bz) => [0, 1, 2, 3, 4, 5, 6, 7].some((i) => Math.abs(hz0(i) - z) >= 7 && Math.abs(bz - hz0(i)) < 9 && Math.abs(bx - (riverX(hz0(i)) - 23)) < 9);
+  for (let i = 0; i < 6; i++) { const bx = x - 22 + i * 9, bz = z - 26; if (!nearHouse(bx, bz)) banner(B, bx, bz, UMB[i], 5); }
 }
 function zoneForest(B, r) {
   const { x, z } = ZONES[3];
