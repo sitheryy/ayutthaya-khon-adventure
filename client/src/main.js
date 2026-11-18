@@ -288,8 +288,12 @@ function footsteps(dt) {
 
 // ---------- loop ----------
 function resize() {
-  const vv = window.visualViewport, w = Math.round(vv?.width || innerWidth), h = Math.round(vv?.height || innerHeight);   // visualViewport: no gap under the iOS bars
-  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  // The canvas CSS box and the render buffer must share ONE size, or iOS stretches the picture / leaves a bar:
+  // take the biggest of visual viewport, layout viewport and (installed app only) the real screen.
+  const vv = window.visualViewport, standalone = navigator.standalone || matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches;
+  let w = Math.round(Math.max(vv?.width || 0, innerWidth)), h = Math.round(Math.max(vv?.height || 0, innerHeight));
+  if (standalone) { const long = Math.max(screen.width, screen.height), short = Math.min(screen.width, screen.height), land = w >= h; h = Math.max(h, land ? short : long); w = Math.max(w, land ? long : short); }
+  renderer.setSize(w, h, true); camera.aspect = w / h; camera.updateProjectionMatrix();
   renderer.getDrawingBufferSize(STYLE.uRes.value);
   composer?.setSize(w, h); tilt?.setSize(STYLE.uRes.value.x, STYLE.uRes.value.y);
 }
@@ -302,7 +306,8 @@ if (!LOW && !params.has('nobloom')) {
   tilt = tiltShiftPasses(); tilt.passes.forEach((p) => composer.addPass(p));
   composer.addPass(new OutputPass());
 }
-addEventListener('resize', resize); resize();
+addEventListener('resize', resize); window.visualViewport?.addEventListener('resize', resize); addEventListener('orientationchange', () => setTimeout(resize, 300)); addEventListener('pageshow', resize);
+resize(); setTimeout(resize, 400); setTimeout(resize, 1500);   // iOS settles its bars a moment after load
 // "light graphics" button: lower resolution, no shadows, no bloom/tilt-shift. Remembered per device.
 let light = false; try { light = localStorage.getItem('khon-light') === '1'; } catch {}
 const PIXEL_RATIO = Math.min(devicePixelRatio, LOW ? 1.25 : 1.75);

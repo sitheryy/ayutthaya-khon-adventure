@@ -5,7 +5,7 @@
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color: var(--cream); touch-action: none; user-select: none; -webkit-user-select: none; }
-#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#game { position: fixed; top: 0; left: 0; display: block; }   /* size is set from JS (resize) so buffer and box always match */
 .hidden { display: none !important; }
 
 .panel {
