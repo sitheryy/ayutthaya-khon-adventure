@@ -193,6 +193,8 @@ html, body { background: #2a1a0e; }
   background: rgba(47,28,15,.94); border: 3px solid var(--gold); border-radius: 16px; padding: 10px 16px 8px; color: var(--cream); box-shadow: 0 6px 18px rgba(0,0,0,.4); }
 #btn-talk { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(96px + env(safe-area-inset-bottom)); z-index: 12; pointer-events: auto; cursor: pointer; padding: 12px 26px; border-radius: 28px; border: 2px solid #ffe08a; background: rgba(60,36,14,.92); color: #ffe9b0; font: 600 18px Mitr, sans-serif; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
 #btn-talk.hidden { display: none; }
+body.touch #btn-talk { bottom: calc(262px + env(safe-area-inset-bottom)); }   /* above the treasure signal (130px) and the chest prompt (215px) on iPad */
+@media (max-height: 520px) { body.touch #btn-talk { bottom: calc(112px + env(safe-area-inset-bottom)); padding: 8px 20px; font-size: 15px; } }
 #npc-say b { color: var(--gold); font-size: 17px; } #npc-say b small { color: var(--cream); opacity: .75; font-weight: 400; margin-left: 8px; }
 #npc-say p { margin: 4px 0 2px; font-size: 16px; line-height: 1.45; } #npc-say .more { display: block; text-align: right; font-size: 12px; opacity: .75; }
 @media (max-height: 520px) { #npc-say { bottom: calc(60px + env(safe-area-inset-bottom)); width: min(520px, calc(100vw - 260px)); padding: 6px 12px 5px; } #npc-say b { font-size: 14px; } #npc-say p { font-size: 13.5px; line-height: 1.35; } }
