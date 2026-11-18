@@ -49,7 +49,12 @@ function makeChest() {
   const o = prop('rustic_chest'), g = new THREE.Group();   // "Stylized Rustic Chest" (CGTrader); lid is its own node hinged at the back
   const b = new THREE.Box3().setFromObject(o), sz = b.getSize(new THREE.Vector3());
   o.scale.multiplyScalar(1.7 / Math.max(sz.x, sz.z)); g.add(o);
-  const lid = o.getObjectByName('Chest_Lid');
+  let lid = o.getObjectByName('Chest_Lid');
+  if (lid?.geometry) {   // the lid's own origin is its centre: hinge it on the back edge (-z, the latch is on +z) so it swings up like a real lid
+    lid.geometry.computeBoundingBox();
+    const bb = lid.geometry.boundingBox, hinge = new THREE.Vector3(0, bb.min.y, bb.min.z).multiply(lid.scale).add(lid.position), pv = new THREE.Group();
+    pv.position.copy(hinge); lid.parent.add(pv); pv.add(lid); lid.position.sub(hinge); lid = pv;
+  }
   scene.add(g);   // no glow or light beam: students find chests with the wand only
   return { g, lid, lidT: 0, x: 0, z: 0, found: false, col: { x: 0, z: 0, r: 0.75 } };
 }
