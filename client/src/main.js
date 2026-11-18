@@ -28,6 +28,7 @@ let cullT = 0;   // every device gets the full graphics; the player taps the ⚡
 const canvas = $('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: !LOW, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, LOW ? 1.25 : 1.75));
+renderer.info.autoReset = false;   // frame() resets it once per frame, so ?debug counts every pass of the composer, not just the last one
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.toneMapping = THREE.NeutralToneMapping;
@@ -369,7 +370,7 @@ const showFps = params.has('debug');
 if (showFps) $('fps').classList.remove('hidden');
 function frame() {
   clock.update(); const rawDt = clock.getDelta(), dt = Math.min(rawDt, 0.05), t = clock.getElapsed();
-  uTime.value = t;
+  uTime.value = t; renderer.info.reset();
   const night = updateCycle({ sunDir: SUN_DIR, fog: scene.fog, bloom: bloomPass });
   sun.color.setScalar(1);
   if (running) { updateNpc(me, !$('quiz')?.classList.contains('hidden') || !$('overlay')?.classList.contains('hidden')); updatePlayer(dt); updateZone(dt); drawMinimap(); game.onTick?.(dt, t); game.onTickNet?.(dt); updateAmbience(actx, me, game.quiet); }
@@ -380,7 +381,7 @@ function frame() {
   dynRes(Math.min(rawDt, 0.5));
   grade?.update(camera, SUN_DIR, innerWidth, innerHeight);
   composer && !light ? composer.render(dt) : renderer.render(scene, camera);
-  if (showFps) { fpsAcc += dt; fpsN++; if (fpsAcc > 0.5) { $('fps').textContent = `${Math.round(fpsN / fpsAcc)} fps · x${dynS.toFixed(1)} · ${renderer.info.render.calls} calls · ${(renderer.info.render.triangles / 1000) | 0}k tris`; fpsAcc = fpsN = 0; } }
+  if (showFps) { fpsAcc += dt; fpsN++; if (fpsAcc > 0.5) { $('fps').textContent = `${Math.round(fpsN / fpsAcc)} fps · x${dynS.toFixed(1)} · ${renderer.info.render.calls} calls · ${(renderer.info.render.triangles / 1000) | 0}k tris · ${renderer.info.memory.geometries} geo · ${renderer.info.memory.textures} tex`; fpsAcc = fpsN = 0; } }
   if (running && !light && !lagHinted) { lagT += dt; lagN++; if (lagT > 6) { if (lagN / lagT < 22) { lagHinted = true; toast('🐢 เครื่องช้าใช่ไหม? แตะ ⚡ ภาพเบา ที่มุมขวาจะลื่นขึ้น', 6000); } lagT = lagN = 0; } }
   requestAnimationFrame(frame);
 }
