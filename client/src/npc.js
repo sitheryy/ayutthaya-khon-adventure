@@ -24,6 +24,7 @@ export const NPC_DEFS = [
   ] },
 ];
 
+export const talkingTo = () => cur;   // the NPC whose card is open (it stops and faces the student)
 export const NPCS = [];   // filled by world.js: { def, x, z, i }
 const $ = (id) => document.getElementById(id);
 let cur = null, hiddenAt = 0, near = null;   // near = the NPC the talk button is offering

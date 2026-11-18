@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { ZONES, HALF, WALL_Z, colliders, groundHeight, isBlockedWater, cullAt } from './world.js';
-import { NPCS } from './npc.js';
+import { NPCS, talkingTo } from './npc.js';
 import { makeNameTag } from './character.js';
 
 const S = 1.5;   // 1.7 m models -> about the size of the plaza mascots' neighbours; clearly readable on a phone
@@ -72,27 +72,44 @@ export async function spawnVillagers(scene, animated, me) {
     const tag = makeNameTag(def.name, def.sub, '#ffe08a'); tag.position.y = new THREE.Box3().setFromObject(model).max.y + 0.3; tag.scale.multiplyScalar(1.0 / S); model.add(tag);   // tag lives in model units, so undo the root scale
     const mixer = new THREE.AnimationMixer(model), act = mixer.clipAction(g.animations[0]); act.play();
     const npc = { def, x: hx, z: hz, i: Math.floor(Math.random() * def.facts.length) }; NPCS.push(npc);
-    let tx = hx, tz = hz, wait = Math.random() * 3, walking = false, yaw = Math.random() * 6.28;
-    // standing pose = the model's own rest pose (arms down): the clip is only a walk, so any frozen frame looks mid-stride
+    let tx = hx, tz = hz, walking = false, yaw = Math.random() * 6.28;
+    // standing pose = the model's rest pose with the arms brought down beside the body (the clip is only a walk, and the rest pose is arms-out)
     const rest = []; model.traverse((o) => { if (o.isBone) rest.push([o, o.position.clone(), o.quaternion.clone(), o.scale.clone()]); });
+    root.rotation.y = 0; root.updateMatrixWorld(true);
+    const bn = (n) => model.getObjectByProperty('name', 'mixamorig' + n), wp = (o) => o.getWorldPosition(new THREE.Vector3());
+    const la = bn('LeftArm'), lf = bn('LeftForeArm'), ra = bn('RightArm'), rfo = bn('RightForeArm');
+    if (la && lf && ra && rfo) {
+      const side = wp(la).sub(wp(ra)).setY(0).normalize(), pq = new THREE.Quaternion(), dq = new THREE.Quaternion();
+      for (const [arm, fore, sg] of [[la, lf, 1], [ra, rfo, -1]]) {
+        const cur = wp(fore).sub(wp(arm)).normalize(), want = new THREE.Vector3(0, -1, 0).addScaledVector(side, sg * 0.1).normalize();
+        dq.setFromUnitVectors(cur, want); arm.parent.getWorldQuaternion(pq);
+        arm.quaternion.premultiply(pq.clone().invert().multiply(dq).multiply(pq));   // world-space delta -> parent space
+        rest.find((r) => r[0] === arm)[2].copy(arm.quaternion);
+        arm.parent.updateMatrixWorld(true);
+      }
+    }
     let br = Math.random() * 6;
     const stand = () => { walking = false; act.paused = true; for (const [o, p, q, sc] of rest) { o.position.copy(p); o.quaternion.copy(q); o.scale.copy(sc); } };
     const go = () => { walking = true; act.paused = false; };
+    const pick = () => {   // next spot inside the home area
+      for (let k = 0; k < 10; k++) { const a = Math.random() * 6.28, d = 2 + Math.random() * def.r, x = hx + Math.cos(a) * d, z = hz + Math.sin(a) * d; if (!blocked(x, z) && clearLine(npc.x, npc.z, x, z)) { tx = x; tz = z; return true; } }
+      return false;
+    };
+    const turn = (want, k) => { let d = want - yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); yaw += d * Math.min(1, k); };
     stand();
     root.position.set(hx, groundHeight(hx, hz), hz); root.rotation.y = yaw; scene.add(root); cullAt(root, 80);
     animated.push((t, dt) => {
       if (!root.visible) return;
-      const near = Math.hypot(me.x - npc.x, me.z - npc.z) < 6.5;
-      if (near) {   // stop and face the student
+      if (talkingTo() === npc) {   // chatting: stop, arms at the sides, face the student
         if (walking) stand();
-        const want = Math.atan2(me.x - npc.x, me.z - npc.z); let d = want - yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); yaw += d * Math.min(1, dt * 4);
-      } else if (walking) {
-        const dx = tx - npc.x, dz = tz - npc.z, dist = Math.hypot(dx, dz), step = def.speed * dt;
-        if (dist < 0.3 || blocked(npc.x + dx / dist * step, npc.z + dz / dist * step)) { stand(); wait = 1.5 + Math.random() * 4; }
-        else { npc.x += dx / dist * step; npc.z += dz / dist * step; const want = Math.atan2(dx, dz); let d = want - yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); yaw += d * Math.min(1, dt * 5); mixer.update(dt); }
-      } else if ((wait -= dt) <= 0) {   // pick a new spot inside the home area
-        for (let k = 0; k < 8; k++) { const a = Math.random() * 6.28, d = 2 + Math.random() * def.r, x = hx + Math.cos(a) * d, z = hz + Math.sin(a) * d; if (!blocked(x, z) && clearLine(npc.x, npc.z, x, z)) { tx = x; tz = z; go(); break; } }
-        wait = 1 + Math.random() * 2;
+        turn(Math.atan2(me.x - npc.x, me.z - npc.z), dt * 4);
+      } else {   // otherwise keep strolling
+        if (!walking && pick()) go();
+        if (walking) {
+          let dx = tx - npc.x, dz = tz - npc.z, dist = Math.hypot(dx, dz), step = def.speed * dt;
+          if (dist < 0.4 || blocked(npc.x + dx / dist * step, npc.z + dz / dist * step)) { if (pick()) { dx = tx - npc.x; dz = tz - npc.z; dist = Math.hypot(dx, dz) || 1; } else stand(); }
+          if (walking) { npc.x += dx / dist * step; npc.z += dz / dist * step; turn(Math.atan2(dx, dz), dt * 5); mixer.update(dt); }
+        }
       }
       if (!walking) { br += dt * 1.8; model.scale.y = 1 + Math.sin(br) * 0.006; } else model.scale.y = 1;
       root.position.set(npc.x, groundHeight(npc.x, npc.z), npc.z); root.rotation.y = yaw;
