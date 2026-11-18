@@ -12,13 +12,14 @@ export const STYLE = {
   uFogA: { value: new THREE.Color('#ffd2a6') },
   uFogB: { value: new THREE.Color('#b4a8f0') },
   uRes: { value: new THREE.Vector2(1, 1) },
+  uCel: { value: new URLSearchParams(location.search).get('cel') === '0' ? 0 : 1 },   // cel-shaded steps (?cel=0 = smooth, the old look)
 };
 
 export function stylize(sh, extra = '') {
   Object.assign(sh.uniforms, STYLE);
   sh.fragmentShader = sh.fragmentShader
     .replace('#include <common>', `#include <common>
-      uniform vec3 uLightColor, uShadowColor, uFogA, uFogB; uniform float uLightI, uCoreLo, uCoreHi; uniform vec2 uRes;`)
+      uniform vec3 uLightColor, uShadowColor, uFogA, uFogB; uniform float uLightI, uCoreLo, uCoreHi, uCel; uniform vec2 uRes;`)
     .replace('vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + totalEmissiveRadiance;', `
       vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + totalEmissiveRadiance;
       {
@@ -36,6 +37,7 @@ export function stylize(sh, extra = '') {
           }
         #endif
         float sm = clamp(max(max(core, drop), extraShadow), 0.0, 1.0);
+        sm = mix(sm, floor(sm * 3.0 + 0.5) / 3.0, uCel);   // 4 flat light levels, like the Godot pixel-art clip
         outgoingLight = mix(base * uLightColor * uLightI, base * uShadowColor, sm) + totalEmissiveRadiance;
       }`)
     .replace('#include <fog_fragment>', `

@@ -6,25 +6,25 @@ import { stylize } from './style.js';
 import { WIND_GLSL, windUniforms } from './noise.js';
 
 function leafTexture() {
-  const S = 128, c = document.createElement('canvas'); c.width = c.height = S;
+  // chunky pixel leaves: tiny texture + NEAREST filtering = hard stair-stepped edges (pixel-art look)
+  const S = 32, c = document.createElement('canvas'); c.width = c.height = S;
   const x = c.getContext('2d'); x.fillStyle = '#000'; x.fillRect(0, 0, S, S);
-  let s = 7; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
-  // a cluster of small rounded leaves (crisp edges after alpha test)
-  x.fillStyle = '#fff';
-  for (let i = 0; i < 16; i++) {
-    const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * 40, cx = S / 2 + Math.cos(a) * d, cy = S / 2 + Math.sin(a) * d, r = 9 + rnd() * 7;
+  let s = 11; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  x.fillStyle = '#fff'; x.imageSmoothingEnabled = false;
+  for (let i = 0; i < 6; i++) {
+    const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * 9, cx = S / 2 + Math.cos(a) * d, cy = S / 2 + Math.sin(a) * d, r = 3.2 + rnd() * 2.6;
     x.save(); x.translate(cx, cy); x.rotate(rnd() * Math.PI); x.beginPath();
-    for (let k = 0; k < 7; k++) { const t = (k / 7) * Math.PI * 2, rr = r * (0.8 + rnd() * 0.35); x.lineTo(Math.cos(t) * rr, Math.sin(t) * rr); }
+    for (let k = 0; k < 6; k++) { const t = (k / 6) * Math.PI * 2, rr = r * (0.8 + rnd() * 0.4); x.lineTo(Math.cos(t) * rr, Math.sin(t) * rr * 0.8); }
     x.closePath(); x.fill(); x.restore();
   }
-  const t = new THREE.CanvasTexture(c); t.generateMipmaps = true; return t;
+  const t = new THREE.CanvasTexture(c); t.generateMipmaps = false; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; return t;
 }
 
 function clusterGeometry(count, seed) {
   let s = seed; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
   const planes = [], v = new THREE.Vector3(), n = new THREE.Vector3();
   for (let i = 0; i < count; i++) {
-    const p = new THREE.PlaneGeometry(0.74, 0.74);
+    const p = new THREE.PlaneGeometry(0.95, 0.95);
     p.rotateZ(rnd() * 9); p.rotateX(rnd() * 6.28); p.rotateY(rnd() * 6.28);
     const sp = new THREE.Spherical(1 - Math.pow(rnd(), 3), Math.acos(2 * rnd() - 1), rnd() * Math.PI * 2);
     const c = new THREE.Vector3().setFromSpherical(sp); p.translate(c.x, c.y, c.z);
@@ -58,7 +58,8 @@ export function makeFoliageMaterial(colorA, colorB, uTime) {
         #if NUM_DIR_LIGHTS > 0
           lf = smoothstep(-0.05, 0.3, dot(normalize(vNormal), directionalLights[0].direction));
         #endif
-        vec4 diffuseColor = vec4(mix(uColA, uColB, lf), opacity);`);
+        float band = floor(lf * 3.0 + 0.5) / 3.0;   // 4 flat leaf tones: dark / mid / mid-light / light
+        vec4 diffuseColor = vec4(mix(uColA * 0.9, uColB * 0.92, band), opacity);`);
   };
   m.customProgramCacheKey = () => 'foliage';
   return m;

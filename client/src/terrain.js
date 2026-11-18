@@ -95,6 +95,10 @@ export function buildGroundMesh(scene, { pathColorAt, isSlab }) {
       vec2 wp = vWp.xz;
       vec4 n1 = texture2D(uNoise, wp * 0.013), n2 = texture2D(uNoise, wp * 0.09), n3 = texture2D(uNoise, wp * 0.45);
       diffuseColor.rgb *= 0.8 + n1.r * 0.3 + (n2.g - 0.5) * 0.18 + (n3.b - 0.5) * 0.16;
+      float gm = smoothstep(0.0, 0.06, diffuseColor.g - diffuseColor.r) * (1.0 - vMk.y);   // grass areas only
+      float tuft = step(0.60, n3.g) * step(n3.b, 0.55), tuftL = step(0.66, n2.b) * step(0.5, n3.r);   // flat leafy tufts: dark + light marks
+      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.78, tuft * gm);
+      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.16 + vec3(0.02, 0.04, 0.0), tuftL * gm * (1.0 - tuft));
       float pebble = smoothstep(0.72, 0.78, n3.b) * (1.0 - vMk.x) * (1.0 - vMk.y);
       diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.72, pebble);
       float slab = texture2D(uNoise, wp * 0.11).a;
@@ -147,8 +151,8 @@ export function buildGrass(scene, { sub, patch, uTime }) {
         vTip = tip; vVar = tr.b;`);
     sh.fragmentShader = 'uniform vec3 uA, uB, uTip; varying float vTip; varying float vVar;\n' + sh.fragmentShader
       .replace('vec4 diffuseColor = vec4( diffuse, opacity );', `
-        vec3 gc = mix(uA, uB, 0.25 + vVar * 0.45);
-        gc = mix(gc, uTip, smoothstep(0.45, 1.0, vTip) * (0.35 + vVar * 0.4));
+        float gt = clamp(0.10 + vVar * 0.40 + vTip * 0.38, 0.0, 1.0);
+        vec3 gc = gt < 0.34 ? uA * 0.92 : (gt < 0.62 ? mix(uA, uB, 0.55) : (gt < 0.82 ? uB : mix(uB, uTip, 0.45)));   // 4 flat greens, no gradient
         vec4 diffuseColor = vec4(gc, 1.0);`);
   };
   m.customProgramCacheKey = () => 'grass2';
