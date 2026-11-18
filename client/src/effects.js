@@ -151,3 +151,33 @@ export function fireflies(scene, uTime, count = 160) {
   });
   const pts = new THREE.Points(g, m); pts.frustumCulled = false; scene.add(pts);
 }
+
+// Final colour grade (after tone mapping): gentle S-curve contrast, saturation, split-toning (violet shadows / gold highlights),
+// warm vignette and a soft sun glare when the sun is in front of the camera.
+export function gradePass() {
+  const p = new ShaderPass({
+    uniforms: { tDiffuse: { value: null }, uSun: { value: new THREE.Vector2(0.5, 0.5) }, uSunVis: { value: 0 }, uAspect: { value: 1 }, uAmt: { value: 1 } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `uniform sampler2D tDiffuse; uniform vec2 uSun; uniform float uSunVis, uAspect, uAmt; varying vec2 vUv;
+      void main(){
+        vec3 c0 = texture2D(tDiffuse, vUv).rgb, c = c0;
+        c = mix(c, c * c * (3.0 - 2.0 * c), 0.28);                                   // contrast
+        float l = dot(c, vec3(0.299, 0.587, 0.114));
+        c = mix(vec3(l), c, 1.14);                                                   // saturation
+        c *= mix(vec3(0.96, 0.93, 1.06), vec3(1.07, 1.02, 0.92), smoothstep(0.15, 0.85, l));   // violet shadows, gold lights
+        vec2 q = vUv - 0.5; q.x *= uAspect;
+        c *= 1.0 - smoothstep(0.35, 0.95, length(q)) * 0.38 * vec3(0.9, 0.95, 1.0);   // vignette
+        vec2 d = vUv - uSun; d.x *= uAspect; float r = length(d);
+        c += vec3(1.0, 0.78, 0.45) * (exp(-r * 5.0) * 0.20 + exp(-r * 18.0) * 0.18) * uSunVis;   // sun glare
+        gl_FragColor = vec4(mix(c0, c, uAmt), 1.0);
+      }`,
+  });
+  const v = new THREE.Vector3();
+  p.update = (camera, sunDir, w, h) => {
+    v.copy(camera.position).addScaledVector(sunDir, 2000).project(camera);
+    p.uniforms.uSun.value.set(v.x * 0.5 + 0.5, v.y * 0.5 + 0.5); p.uniforms.uAspect.value = w / h;
+    const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd);
+    p.uniforms.uSunVis.value = THREE.MathUtils.smoothstep(fwd.dot(sunDir), 0.2, 0.9) * (v.z < 1 ? 1 : 0);
+  };
+  return p;
+}

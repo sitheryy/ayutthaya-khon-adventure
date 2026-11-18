@@ -4,7 +4,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { flyingLeaves, windLines, tiltShiftPasses, fireflies } from './effects.js';
+import { flyingLeaves, windLines, tiltShiftPasses, fireflies, gradePass } from './effects.js';
 import { updateCycle } from './cycle.js';
 import { buildLife } from './life.js';
 import { startAmbience, updateAmbience } from './ambience.js';
@@ -302,13 +302,14 @@ function resize() {
   composer?.setSize(w, h); tilt?.setSize(STYLE.uRes.value.x, STYLE.uRes.value.y);
 }
 // bloom (desktop): glints on water, gold roofs, sun
-let composer = null, tilt = null, bloomPass = null;
+let composer = null, tilt = null, bloomPass = null, grade = null;
 if (!LOW && !params.has('nobloom')) {
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
   composer.addPass((bloomPass = new UnrealBloomPass(new THREE.Vector2(512, 512), 0.38, 0.55, 0.95)));
   tilt = tiltShiftPasses(); tilt.passes.forEach((p) => composer.addPass(p));
   composer.addPass(new OutputPass());
+  if (params.get('fx') !== '0') composer.addPass((grade = gradePass()));   // ?fx=0 = old look, for comparing
 }
 addEventListener('resize', resize); window.visualViewport?.addEventListener('resize', resize); addEventListener('orientationchange', () => setTimeout(resize, 300)); addEventListener('pageshow', resize);
 resize(); setTimeout(resize, 400); setTimeout(resize, 1500);   // iOS settles its bars a moment after load
@@ -334,6 +335,7 @@ function frame() {
   if (running) { updatePlayer(dt); updateZone(dt); drawMinimap(); game.onTick?.(dt, t); game.onTickNet?.(dt); updateAmbience(actx, me, game.quiet); }
   updateCamera(dt);
   for (const fn of animated) fn(t, dt);
+  grade?.update(camera, SUN_DIR, innerWidth, innerHeight);
   composer && !light ? composer.render(dt) : renderer.render(scene, camera);
   if (showFps) { fpsAcc += dt; fpsN++; if (fpsAcc > 0.5) { $('fps').textContent = `${Math.round(fpsN / fpsAcc)} fps · ${renderer.info.render.calls} calls · ${(renderer.info.render.triangles / 1000) | 0}k tris`; fpsAcc = fpsN = 0; } }
   if (running && !light && !lagHinted) { lagT += dt; lagN++; if (lagT > 6) { if (lagN / lagT < 22) { lagHinted = true; toast('🐢 เครื่องช้าใช่ไหม? แตะ ⚡ ภาพเบา ที่มุมขวาจะลื่นขึ้น', 6000); } lagT = lagN = 0; } }
