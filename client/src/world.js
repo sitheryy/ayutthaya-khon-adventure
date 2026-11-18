@@ -41,7 +41,7 @@ function model(name, x, z, ry = 0, sc = 1, collide = true, face = null) {
 }
 // jar beside a house (left side, toward the back), never on a road
 function jarBeside(h, name, sc) { const [w, d] = MSIZE[name]; const [jx, jz] = wpos(h.x, h.z, h.ry, (w / 2 + 1.2) * sc, -d * 0.2 * sc); if (pathClear(jx, jz, 0.6)) model('thai_jar', jx, jz, 0, 1.2); }
-import { makeCharacter, studentLook, ROLE_LOOKS, makeKhon, prop, propParts, makeAnimal } from './models.js';
+import { makeCharacter, studentLook, ROLE_LOOKS, makeKhon, prop, propStatic, propParts, makeAnimal } from './models.js';
 
 export const HALF = 140;           // walkable half-extent (compact map: zones close together)
 export const SPAWN = { x: 0, z: 20 };
@@ -63,6 +63,8 @@ export const WELL = { x: 0, z: 0 }; // low solid floors you stand on: {x,z,hw,hd
 export const waters = [];      // {x,z,r} blocked ponds
 export const animated = [];    // fns(t, dt)
 export const uTime = { value: 0 };
+export const distCull = [];     // roots hidden (no draw, no shadow, no skinning) beyond r metres from the player
+export const cullAt = (o, r = 100) => { distCull.push({ o, r }); return o; };
 const circ = (x, z, r) => colliders.push({ x, z, r });
 const boxC = (x, z, hw, hd) => colliders.push({ x, z, hw, hd });
 
@@ -482,8 +484,8 @@ function zoneTheater(B, r, scene) {
     ch.root.rotation.y = Math.PI / 2;
     ch.root.scale.setScalar(1.5);
     ch.mixer.update(i * 0.6);
-    scene.add(ch.root);
-    animated.push((t, dt) => ch.update(dt));
+    scene.add(ch.root); cullAt(ch.root, 110);
+    animated.push((t, dt) => { if (ch.root.visible) ch.update(dt); });
   });
 }
 // City wall (กำแพงเมือง) around the whole city. West/north/south are straight; the east wall runs on the far
@@ -740,7 +742,7 @@ function fit(o, len) {
 }
 function buildBoats(scene) {
   const mk = (x, z, kind, rot = 0) => {
-    const g = new THREE.Group(), b = prop(kind);
+    const g = new THREE.Group(), b = propStatic(kind);
     if (!b) return g;
     const bb0 = new THREE.Box3().setFromObject(b), sz = bb0.getSize(new THREE.Vector3());
     if (sz.x > sz.z) b.rotation.y = Math.PI / 2;
@@ -998,7 +1000,7 @@ export function buildWorld(scene, { low = false } = {}) {
   buildBoats(scene);
   buildScatter(scene, r);
   B.build(scene);
-  for (const m of MODELS) { const o = prop(m.name); if (!o) continue; o.traverse((c) => { if (c.isMesh) c.material.side = THREE.DoubleSide; }); o.position.set(m.x, m.y ?? groundHeight(m.x, m.z), m.z); o.rotation.order = 'YZX'; o.rotation.set(m.rx || 0, m.ry, m.rz || 0); o.scale.setScalar(m.sc); scene.add(o); }
+  for (const m of MODELS) { const o = propStatic(m.name); if (!o) continue; o.traverse((c) => { if (c.isMesh) c.material.side = THREE.DoubleSide; }); o.position.set(m.x, m.y ?? groundHeight(m.x, m.z), m.z); o.rotation.order = 'YZX'; o.rotation.set(m.rx || 0, m.ry, m.rz || 0); o.scale.setScalar(m.sc); scene.add(o); }
   buildFoliage(scene, FOL.trees, { colorA: '#2c6a2e', colorB: '#b7e05c', uTime, planes: low ? 80 : 170, seed: 3 });
   buildFoliage(scene, FOL.bushes, { colorA: '#2f6f2a', colorB: '#c4e65a', uTime, planes: low ? 60 : 120, seed: 9 });
   buildLeafLitter(scene, r, low);

@@ -3,6 +3,7 @@
 // so every student sees it in the same place.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { ZONES, groundHeight } from './world.js';
 import { eleClock } from './elephant.js';
 
@@ -11,7 +12,7 @@ const C = { x: ZONES[3].x + 16, z: ZONES[3].z + 18 }, R = 22;   // circle around
 const SPEED = 1.6 * SCALE, LAP = (2 * Math.PI * R) / SPEED, REST = 9, CYCLE = LAP + REST;
 
 export async function spawnNaga(scene, animated) {
-  let gltf; try { gltf = await new GLTFLoader().loadAsync(import.meta.env.BASE_URL + 'models/naga.glb'); } catch { return; }
+  let gltf; try { gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(import.meta.env.BASE_URL + 'models/naga.glb'); } catch { return; }
   const root = gltf.scene; root.scale.setScalar(SCALE);
   root.traverse((o) => {
     if (!o.isMesh) return;

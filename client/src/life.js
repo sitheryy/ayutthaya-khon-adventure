@@ -1,7 +1,7 @@
 // Life in the city: villagers walking the paths, market crowd, grazing animals, village props.
 import * as THREE from 'three';
-import { PATHS, ZONES, SPAWN, WALL_Z, RICE, groundHeight, colliders, animated, riverX, isBlockedWater, rng, pathClear, WELL } from './world.js';
-import { makeCharacter, studentLook, ROLE_LOOKS, makeAnimal, prop } from './models.js';
+import { PATHS, ZONES, SPAWN, WALL_Z, RICE, groundHeight, colliders, animated, cullAt, riverX, isBlockedWater, rng, pathClear, WELL } from './world.js';
+import { makeCharacter, studentLook, ROLE_LOOKS, makeAnimal, prop, propStatic } from './models.js';
 
 const blocked = (x, z, pad) => isBlockedWater(x, z) || colliders.some((c) => (c.r !== undefined ? Math.hypot(x - c.x, z - c.z) < c.r + pad : Math.abs(x - c.x) < c.hw + pad && Math.abs(z - c.z) < c.hd + pad));
 
@@ -17,7 +17,7 @@ export function buildLife(scene, { low }) {
   const r = rng(77);
   const place = (name, x, z, ry, size, pad = 0.4) => {
     if (blocked(x, z, pad) || !pathClear(x, z, size * 0.4)) return null;   // never block a road
-    const o = prop(name); if (!o) return null;
+    const o = propStatic(name); if (!o) return null;
     const g = fitTo(o, size); g.position.set(x, groundHeight(x, z), z); g.rotation.y = ry; scene.add(g);
     colliders.push({ x, z, r: size * 0.35 });
     return g;
@@ -32,15 +32,15 @@ export function buildLife(scene, { low }) {
     if (kid) ch.root.scale.setScalar(0.85);
     const len = Math.hypot(seg.b[0] - seg.a[0], seg.b[1] - seg.a[1]), nx = -(seg.b[1] - seg.a[1]) / len, nz = (seg.b[0] - seg.a[0]) / len;
     const st = { t: r(), dir: r() < 0.5 ? 1 : -1, off: (r() - 0.5) * (seg.w - 1.2), sp: 1.1 + r() * 0.7, wait: 0 };
-    scene.add(ch.root);
+    scene.add(ch.root); cullAt(ch.root, 90);
     animated.push((t, dt) => {
-      if (st.wait > 0) { st.wait -= dt; ch.animate(dt, 0, false); return; }
+      if (st.wait > 0) { st.wait -= dt; if (ch.root.visible) ch.animate(dt, 0, false); return; }
       st.t += (st.dir * st.sp * dt) / len;
       if (st.t > 1 || st.t < 0) { st.t = THREE.MathUtils.clamp(st.t, 0, 1); st.dir *= -1; st.wait = 1.5 + r() * 3; }
       const x = seg.a[0] + (seg.b[0] - seg.a[0]) * st.t + nx * st.off, z = seg.a[1] + (seg.b[1] - seg.a[1]) * st.t + nz * st.off;
       ch.root.position.set(x, groundHeight(x, z), z);
       ch.root.rotation.y = Math.atan2((seg.b[0] - seg.a[0]) * st.dir, (seg.b[1] - seg.a[1]) * st.dir);
-      ch.animate(dt, st.sp, false);
+      if (ch.root.visible) ch.animate(dt, st.sp, false);
     });
   }
 
@@ -52,8 +52,8 @@ export function buildLife(scene, { low }) {
       const ch = makeCharacter(looks(i + 2)); if (i % 3 === 0) ch.root.scale.setScalar(0.85);
       ch.root.position.set(x, groundHeight(x, z), z); ch.root.rotation.y = Math.atan2(cx - x, cz - z) + (r() - 0.5);
       ch.play(acts[i % acts.length]); ch.mixer.update(r() * 3);
-      scene.add(ch.root); colliders.push({ x, z, r: 0.45 });
-      animated.push((t, dt) => ch.update(dt));
+      scene.add(ch.root); colliders.push({ x, z, r: 0.45 }); cullAt(ch.root, 90);
+      animated.push((t, dt) => { if (ch.root.visible) ch.update(dt); });
     }
   };
   const m = ZONES[2];
@@ -66,20 +66,20 @@ export function buildLife(scene, { low }) {
   const herd = (name, n, area, size, opts = {}) => {
     for (let i = 0; i < n; i++) {
       const an = makeAnimal(name, opts); if (!an) return;
-      const g = fitTo(an.root, size); scene.add(g);
+      const g = fitTo(an.root, size); scene.add(g); cullAt(g, 100);
       let [x, z] = area(); g.position.set(x, groundHeight(x, z), z);
       const st = { tx: x, tz: z, wait: r() * 4, sp: opts.speed || 1 };
       an.play('Eating'); an.mixer.update(r() * 2);
       animated.push((t, dt) => {
-        if (st.wait > 0) { st.wait -= dt; an.update(dt); if (st.wait <= 0) { [st.tx, st.tz] = area(); an.play('Walk'); } return; }
+        if (st.wait > 0) { st.wait -= dt; if (g.visible) an.update(dt); if (st.wait <= 0) { [st.tx, st.tz] = area(); an.play('Walk'); } return; }
         const dx = st.tx - x, dz = st.tz - z, d = Math.hypot(dx, dz);
-        if (d < 0.3) { st.wait = 3 + r() * 6; an.play(r() < 0.6 ? 'Eating' : 'Idle'); an.update(dt); return; }
+        if (d < 0.3) { st.wait = 3 + r() * 6; an.play(r() < 0.6 ? 'Eating' : 'Idle'); if (g.visible) an.update(dt); return; }
         const nx = x + (dx / d) * st.sp * dt, nz = z + (dz / d) * st.sp * dt;
-        if (blocked(nx, nz, 0.3)) { st.wait = 1; an.play('Idle'); an.update(dt); return; }
+        if (blocked(nx, nz, 0.3)) { st.wait = 1; an.play('Idle'); if (g.visible) an.update(dt); return; }
         x = nx; z = nz;
         g.position.set(x, groundHeight(x, z), z);
         g.rotation.y += Math.atan2(Math.sin(Math.atan2(dx, dz) - g.rotation.y), Math.cos(Math.atan2(dx, dz) - g.rotation.y)) * Math.min(1, dt * 4);
-        an.update(dt);
+        if (g.visible) an.update(dt);
       });
     }
   };

@@ -1,10 +1,12 @@
 // Loads CC0 models (KayKit chibi characters + Quaternius props) and builds recolored character instances.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const BASE = import.meta.env.BASE_URL + 'models/';
-const loader = new GLTFLoader();
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 async function loadGLB(name) {
   if (import.meta.env.VITE_INLINE_MODELS) { // preview build: models inlined as base64 (tools/build-artifact.sh)
     const b64 = (await import('./models-inline.js')).default[name];
@@ -153,15 +155,39 @@ function khonHeadwear(k) {
 }
 
 // ---------- props ----------
+const matCache = new Map();   // one material per (source, tint): clones of a prop share state, so the GPU switches less
+function sharedMat(src, vc, tint) {
+  const k = `${src.uuid}|${vc}|${tint || 1}`; let mat = matCache.get(k);
+  if (!mat) { mat = new THREE.MeshLambertMaterial({ color: src.color, map: src.map || null, vertexColors: vc }); if (tint) mat.color.multiplyScalar(tint); matCache.set(k, mat); }
+  return mat;
+}
+// A static prop (no skeleton, no child lookups): bakes all meshes that share a material into ONE mesh -> far fewer draw calls (and shadow draws).
+export function propStatic(name, opts) {
+  const o = prop(name, opts); if (!o) return o;
+  o.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(o.matrixWorld).invert(), groups = new Map();
+  o.traverse((m) => { if (m.isMesh && !m.isSkinnedMesh && !m.isInstancedMesh) { const l = groups.get(m.material) || []; l.push(m); groups.set(m.material, l); } });
+  for (const [mat, list] of groups) {
+    if (list.length < 2) continue;
+    const keep = ['position', 'normal', 'uv', 'color'].filter((a) => list.every((m) => m.geometry.attributes[a]));
+    const geos = list.map((m) => {
+      const g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
+      for (const a of Object.keys(g.attributes)) if (!keep.includes(a)) g.deleteAttribute(a);
+      return g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld));
+    });
+    const geo = mergeGeometries(geos); if (!geo) continue;   // incompatible attributes: leave this group as it was
+    geos.forEach((g) => g.dispose()); geo.computeBoundingSphere();
+    const mesh = new THREE.Mesh(geo, mat); mesh.castShadow = mesh.receiveShadow = true;
+    list.forEach((m) => m.parent.remove(m)); o.add(mesh);
+  }
+  return o;
+}
 export function prop(name, { scale = 1, tint } = {}) {
   const g = cache[name]; if (!g) return null;
   const o = g.scene.clone(true);
   o.traverse((m) => {
     if (m.isMesh) {
       m.castShadow = true; m.receiveShadow = true;
-      const src = m.material; const mat = new THREE.MeshLambertMaterial({ color: src.color, map: src.map || null, vertexColors: !!m.geometry.attributes.color });
-      if (tint) mat.color.multiplyScalar(tint);
-      m.material = mat;
+      m.material = sharedMat(m.material, !!m.geometry.attributes.color, tint);
     }
   });
   o.scale.setScalar(scale);

@@ -10,7 +10,7 @@ import { buildLife } from './life.js';
 import { startAmbience, updateAmbience } from './ambience.js';
 import { spawnNaga } from './naga.js';
 import { spawnElephants, nearestElephant, setElephant, animateElephants, elephants, SEAT, wanderElephants, setAnchor, eleClock } from './elephant.js';
-import { CITY, SUN_DIR, buildWorld, buildSky, ZONES, SPAWN, HALF, WALL_Z, colliders, animated, uTime, groundHeight, isBlockedWater, zoneAt, riverX, PATHS, waters, surfaceAt } from './world.js';
+import { CITY, SUN_DIR, buildWorld, buildSky, ZONES, SPAWN, HALF, WALL_Z, colliders, animated, distCull, uTime, groundHeight, isBlockedWater, zoneAt, riverX, PATHS, waters, surfaceAt } from './world.js';
 import { makeNameTag } from './character.js';
 import { foliageLod } from './foliage.js';
 import { loadAssets, makeCharacter, studentLook, STUDENT_LOOKS } from './models.js';
@@ -18,7 +18,8 @@ import { Controls } from './controls.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
-const LOW = params.has('low');   // every device gets the full graphics; the player taps the ⚡ button for light mode
+const LOW = params.has('low');
+let cullT = 0;   // every device gets the full graphics; the player taps the ⚡ button for light mode
 
 // ---------- renderer / scene ----------
 const canvas = $('game');
@@ -366,6 +367,7 @@ function frame() {
   sun.color.setScalar(1);
   if (running) { updatePlayer(dt); updateZone(dt); drawMinimap(); game.onTick?.(dt, t); game.onTickNet?.(dt); updateAmbience(actx, me, game.quiet); }
   updateCamera(dt);
+  cullT -= rawDt; if (cullT <= 0) { cullT = 0.3; for (const c of distCull) c.o.visible = Math.hypot(c.o.position.x - camera.position.x, c.o.position.z - camera.position.z) < c.r; }
   for (const fn of animated) fn(t, dt);
   dynRes(Math.min(rawDt, 0.5));
   grade?.update(camera, SUN_DIR, innerWidth, innerHeight);
@@ -393,7 +395,7 @@ controls.pitch = 0.25; controls.dist = 14;
 animated.push((t) => { if (!running) controls.yaw = t * 0.05; });
 
 export { scene, camera, renderer, controls };
-window.__dev = { elephants, me, teleport, controls, game, groundHeight, scene, collide, walkable, colliders, PATHS, mapBase: mapImg };
+window.__dev = { camera, THREE, renderer, elephants, me, teleport, controls, game, groundHeight, scene, collide, walkable, colliders, PATHS, mapBase: mapImg };
 
 export function startPlaying(profile) {
   Object.assign(me, profile);
