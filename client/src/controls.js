@@ -76,7 +76,7 @@ export class Controls {
     if (x || y) { const m = Math.hypot(x, y); x /= m; y /= m; }
     else { x = this.joy.x; y = this.joy.y; }
     const mag = Math.hypot(x, y);
-    return { x, y, run: this.sprint || k.has('ShiftLeft') || k.has('ShiftRight') || mag > 0.85, sprint: this.sprint };
+    return { x, y, run: this.sprint || k.has('ShiftLeft') || k.has('ShiftRight') || mag > 0.85, sprint: this.sprint || k.has('ShiftLeft') || k.has('ShiftRight') };
   }
   takeJump() { const j = this.jumpQueued && this.enabled; this.jumpQueued = false; return j; }
   takeAct() { const a = this.actQueued && this.enabled; this.actQueued = false; return a; }
