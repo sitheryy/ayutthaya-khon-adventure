@@ -6,8 +6,6 @@ import { SKY, NIGHT, EVENING_DIR } from './cycle.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { bakeTerrain, stampMask, stampBox, finalizeMask, terrainH, grassAt, buildGroundMesh, buildGrass, buildWaterSurface } from './terrain.js';
 import { buildFoliage } from './foliage.js';
-import { NPC_DEFS, NPCS } from './npc.js';
-import { makeNameTag } from './character.js';
 import { torches } from './effects.js';
 const FOL = { trees: [], bushes: [] };
 // user-supplied Thai house pack (CGTrader, royalty free) placed as models; footprint sizes from tools/obj2glb.mjs
@@ -988,26 +986,6 @@ function scatterTrees(B, r) {
 }
 
 
-// ---------- knowledge NPCs (see npc.js) ----------
-function buildKhonNpcs(scene) {
-  const blocked = (x, z) => isBlockedWater(x, z) || colliders.some((c) => c.r !== undefined ? Math.hypot(x - c.x, z - c.z) < c.r + 1.4 : Math.abs(x - c.x) < c.hw + 1.4 && Math.abs(z - c.z) < c.hd + 1.4);
-  NPC_DEFS.forEach((def, i) => {
-    const base = def.at === 'spawn' ? SPAWN : ZONES[def.at];
-    let [x, z] = offPath(base.x + def.dx, base.z + def.dz, 1.2);
-    for (let k = 0; k < 60 && blocked(x, z); k++) { const a = k * 2.4, d = 0.8 + k * 0.35; x = base.x + def.dx + Math.cos(a) * d; z = base.z + def.dz + Math.sin(a) * d; }   // spiral out to the nearest free ground
-    const ch = def.kind === 'khon' ? makeKhon(def.role) : makeCharacter(ROLE_LOOKS[def.look]);
-    ch.root.position.set(x, groundHeight(x, z), z);
-    ch.root.rotation.y = Math.atan2(SPAWN.x - x, SPAWN.z - z);
-    ch.root.scale.setScalar(def.kind === 'khon' ? 1.2 : 1.05);
-    ch.root.add(makeNameTag(def.name, def.sub, '#ffe08a'));
-    scene.add(ch.root);
-    colliders.push({ x, z, r: 0.8 });
-    ch.mixer.update(i * 0.37);
-    NPCS.push({ def, x, z, i: 0 });
-    animated.push((t, dt) => { const cp = scene.userData.camPos; if (!cp || Math.hypot(x - cp.x, z - cp.z) < 50) ch.update(dt); });   // far NPCs stand still: no skinning cost
-  });
-}
-
 // ================= entry =================
 export function buildWorld(scene, { low = false } = {}) {
   definePaths();
@@ -1021,7 +999,6 @@ export function buildWorld(scene, { low = false } = {}) {
   buildScatter(scene, r);
   B.build(scene);
   for (const m of MODELS) { const o = prop(m.name); if (!o) continue; o.traverse((c) => { if (c.isMesh) c.material.side = THREE.DoubleSide; }); o.position.set(m.x, m.y ?? groundHeight(m.x, m.z), m.z); o.rotation.order = 'YZX'; o.rotation.set(m.rx || 0, m.ry, m.rz || 0); o.scale.setScalar(m.sc); scene.add(o); }
-  buildKhonNpcs(scene);   // a handful of knowledge NPCs (fixed spots; animation only while the player is near)
   buildFoliage(scene, FOL.trees, { colorA: '#2c6a2e', colorB: '#b7e05c', uTime, planes: low ? 80 : 170, seed: 3 });
   buildFoliage(scene, FOL.bushes, { colorA: '#2f6f2a', colorB: '#c4e65a', uTime, planes: low ? 60 : 120, seed: 9 });
   buildLeafLitter(scene, r, low);

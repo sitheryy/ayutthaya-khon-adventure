@@ -13,7 +13,6 @@ import { spawnElephants, nearestElephant, setElephant, animateElephants, elephan
 import { CITY, SUN_DIR, buildWorld, buildSky, ZONES, SPAWN, HALF, WALL_Z, colliders, animated, uTime, groundHeight, isBlockedWater, zoneAt, riverX, PATHS, waters, surfaceAt } from './world.js';
 import { makeNameTag } from './character.js';
 import { foliageLod } from './foliage.js';
-import { updateNpc, NPCS } from './npc.js';
 import { loadAssets, makeCharacter, studentLook, STUDENT_LOOKS } from './models.js';
 import { Controls } from './controls.js';
 
@@ -365,7 +364,7 @@ function frame() {
   uTime.value = t;
   const night = updateCycle({ sunDir: SUN_DIR, fog: scene.fog, bloom: bloomPass });
   sun.color.setScalar(1);
-  if (running) { updateNpc(me, !$('quiz')?.classList.contains('hidden') || !$('overlay')?.classList.contains('hidden')); updatePlayer(dt); updateZone(dt); drawMinimap(); game.onTick?.(dt, t); game.onTickNet?.(dt); updateAmbience(actx, me, game.quiet); }
+  if (running) { updatePlayer(dt); updateZone(dt); drawMinimap(); game.onTick?.(dt, t); game.onTickNet?.(dt); updateAmbience(actx, me, game.quiet); }
   updateCamera(dt);
   for (const fn of animated) fn(t, dt);
   dynRes(Math.min(rawDt, 0.5));
@@ -394,7 +393,7 @@ controls.pitch = 0.25; controls.dist = 14;
 animated.push((t) => { if (!running) controls.yaw = t * 0.05; });
 
 export { scene, camera, renderer, controls };
-window.__dev = { NPCS, elephants, me, teleport, controls, game, groundHeight, scene, collide, walkable, colliders, PATHS, mapBase: mapImg };
+window.__dev = { elephants, me, teleport, controls, game, groundHeight, scene, collide, walkable, colliders, PATHS, mapBase: mapImg };
 
 export function startPlaying(profile) {
   Object.assign(me, profile);
