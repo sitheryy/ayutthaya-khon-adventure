@@ -29,7 +29,22 @@ export const net = {
 };
 
 // ---------- connection with auto-reconnect ----------
-let retry = 0;
+let retry = 0, lastMsg = 0, reopenTimer = 0, openFn = null;
+// Back from the lock screen / another app: a socket the phone killed while asleep may still look open, and the
+// reconnect back-off may be long. Wait until the screen has settled, then check the socket and reconnect right away.
+function wake() {
+  if (net.leaving || !openFn || !net.join) return;
+  const ws = net.ws;
+  if (!ws || ws.readyState === 3) { clearTimeout(reopenTimer); retry = 0; openFn(); return; }
+  if (ws.readyState !== 1) return;
+  const t0 = Date.now(); net.send({ t: 'ping' });
+  setTimeout(() => {
+    if (net.ws !== ws || lastMsg >= t0) return;            // answered (or already replaced): fine
+    ws.onmessage = ws.onclose = null; try { ws.close(); } catch {}
+    net.online = false; game.netRide = null; setBadge(); clearTimeout(reopenTimer); retry = 0; openFn();
+  }, 2500);
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(wake, 1500); });
 export function connect(join) {
   net.join = join;
   return new Promise((resolve) => {
@@ -40,17 +55,17 @@ export function connect(join) {
       const ws = new WebSocket(SERVER.replace(/^http/, 'ws') + '/ws'); net.ws = ws;
       const timer = setTimeout(() => { if (!settled) { ws.close(); done(false); } }, 12000);   // slow tablets: main thread busy loading the world
       ws.onopen = () => { retry = 0; net.online = true; net.send({ t: 'join', ...net.join, sid: net.sid }); };
-      ws.onmessage = (e) => { const m = JSON.parse(e.data); handle(m); if (m.t === 'welcome') { clearTimeout(timer); done(true); } if (m.t === 'error' && m.msg === 'unauthorized') done(false); };
+      ws.onmessage = (e) => { lastMsg = Date.now(); const m = JSON.parse(e.data); handle(m); if (m.t === 'welcome') { clearTimeout(timer); done(true); } if (m.t === 'error' && m.msg === 'unauthorized') done(false); };
       ws.onclose = (e) => {
         if (net.leaving) return;
         clearTimeout(timer); const was = net.online; net.online = false; game.netRide = null; setBadge();
         if (e.code === 4000 || e.code === 4001) { toast(e.code === 4001 ? 'ครูนำคุณออกจากห้อง' : 'มีการเข้าใช้ชื่อนี้จากอีกเครื่อง'); return; }
         if (!settled) return done(false);
         if (was) toast('🔌 การเชื่อมต่อหลุด กำลังเชื่อมต่อใหม่...', 2500);
-        setTimeout(open, Math.min(8000, 800 * 2 ** retry++));
+        reopenTimer = setTimeout(open, Math.min(8000, 800 * 2 ** retry++));
       };
     };
-    open();
+    openFn = open; open();
   });
 }
 function setBadge() { const b = $('net-badge'); if (b) { b.textContent = net.online ? `🟢 ออนไลน์ ${others.size + (net.role === 'student' ? 1 : 0)} คน` : '🔴 ออฟไลน์'; } }

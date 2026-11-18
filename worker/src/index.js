@@ -102,6 +102,7 @@ export class Room {
   async onMessage(ws, raw) {
     if (typeof raw !== 'string' || raw.length > 20000) return;
     const m = JSON.parse(raw), me = this.sockets.get(ws);
+    if (m.t === 'ping') return this.send(ws, { t: 'pong' });   // lets a phone that just woke up tell a live socket from a dead one
     if (m.t === 'join') {
       if (m.role === 'teacher') {
         if (!this.isTeacher(m.token)) return this.send(ws, { t: 'error', msg: 'unauthorized' });
