@@ -20,7 +20,7 @@ export const assets = { clips: {}, ready: false };
 
 const CHARS = ['Rogue', 'Mage', 'Knight', 'Barbarian'];
 const KHON_FILES = { rama: 'khon_rama', sida: 'khon_sida', hanuman: 'khon_hanuman', thotsakan: 'khon_thotsakan' };
-const EXTRA = [...Object.values(KHON_FILES), 'garuda', 'prang_big', 'lamp_big'];   // user-made Meshy models
+const EXTRA = [...Object.values(KHON_FILES), 'garuda', 'prang_big'];   // user-made Meshy models
 const PROPS = ['rustic_chest', 'Bush', 'BushBerries_1', 'Flowers', 'Lilypad', 'Rock_Moss_1', 'Rock_Moss_2', 'Rock_Moss_3', 'PalmTree_1', 'PalmTree_2', 'Willow_1', 'Boat', 'Sail_ship', 'Star', 'thai_house1', 'thai_house2', 'thai_house3', 'thai_house4', 'thai_sala', 'thai_jar', 'thai_canoe', 'Bull', 'Cow', 'Deer', 'Horse', 'ShibaInu', 'Cart', 'MarketStand_1', 'MarketStand_2', 'Barrel', 'Crate', 'Hay', 'Fence', 'Bench_1', 'Bags', 'Bamboo_1', 'Bamboo_2', 'Bamboo_3', 'Rice_3', 'Rice_4', ...['rug_rectangle_stripes_A', 'cabinet_medium_decorated', 'shelf_B_large_decorated', 'pictureframe_large_A', 'lamp_standing', 'pillow_A', 'table_small', 'chair_A_wood'].map((n) => 'kk_' + n), 'thai_buddha', 'elephant'];
 
 const loadImg = (src) => new Promise((ok, err) => { const i = new Image(); i.onload = () => ok(i); i.onerror = err; i.src = src; });

@@ -942,32 +942,25 @@ function buildLanterns(scene, r) {
     const len = Math.hypot(b[0] - a[0], b[1] - a[1]), nx = -(b[1] - a[1]) / len, nz = (b[0] - a[0]) / len;
     for (let t = 16; t < len - 8; t += 22) {
       const sd = (spots.length % 2) ? 1 : -1, x = a[0] + (b[0] - a[0]) * t / len + nx * (w / 2 + 1) * sd, z = a[1] + (b[1] - a[1]) * t / len + nz * (w / 2 + 1) * sd;
-      if (pathClear(x, z, 0.3) && !isBlockedWater(x, z) && !colliders.some((c) => c.r !== undefined ? Math.hypot(x - c.x, z - c.z) < c.r + 0.8 : Math.abs(x - c.x) < c.hw + 0.8 && Math.abs(z - c.z) < c.hd + 0.8)) spots.push([x, z, Math.atan2(nz * sd, -nx * sd)]);
+      if (pathClear(x, z, 0.3) && !isBlockedWater(x, z) && !colliders.some((c) => c.r !== undefined ? Math.hypot(x - c.x, z - c.z) < c.r + 0.8 : Math.abs(x - c.x) < c.hw + 0.8 && Math.abs(z - c.z) < c.hd + 0.8)) spots.push([x, z]);
     }
   }
   // extra torches at gates and stages
   [[ZONES[1].x - 9, ZONES[1].z + 44], [ZONES[1].x + 9, ZONES[1].z + 44], [ZONES[5].x - 8, WALL_Z - 4], [ZONES[5].x + 8, WALL_Z - 4], [ZONES[4].x + 9, ZONES[4].z - 7], [ZONES[4].x + 9, ZONES[4].z + 7], [ZONES[0].x - 8, ZONES[0].z + 46], [ZONES[0].x + 8, ZONES[0].z + 46], [SPAWN.x - 5, SPAWN.z - 9], [SPAWN.x + 5, SPAWN.z - 9]].forEach(([x, z]) => spots.push(offPath(x, z, 0.3)));
-  const n = spots.length, d = new THREE.Object3D(), part = propParts('lamp_big')[0];
-  // user-made hanging lantern: the arm points along local +x, so it is turned to lean over the path
-  const geo = part.geo; geo.computeBoundingBox(); const bb = geo.boundingBox, H = bb.max.y - bb.min.y, k = 3.4 / H, pos = geo.attributes.position;
-  let px = 0, pz = 0, pc = 0, lx = 0, ly = 0, lz = 0, lc = 0;
-  for (let i = 0; i < pos.count; i++) {
-    const vx = pos.getX(i), vy = pos.getY(i), vz = pos.getZ(i);
-    if (vy < bb.min.y + 0.05 * H) { px += vx; pz += vz; pc++; }
-    if (vx > bb.min.x + 0.6 * (bb.max.x - bb.min.x) && vy < bb.max.y - 0.15 * H && vy > bb.min.y + 0.3 * H) { lx += vx; ly += vy; lz += vz; lc++; }
-  }
-  px /= pc; pz /= pc; lx = lx / lc - px; ly = ly / lc - bb.min.y; lz = lz / lc - pz;   // lantern body, relative to the pole's foot
-  geo.translate(-px, -bb.min.y, -pz); geo.scale(k, k, k);
-  const mat = part.mat; mat.emissive = new THREE.Color('#ff9a3a'); mat.emissiveMap = mat.map; mat.emissiveIntensity = 0.55;
-  const lamps = new THREE.InstancedMesh(geo, mat, n), flames = [], fy = ly * k - 0.3;   // flame sits inside the lantern; its light pool lands on the ground
-  spots.forEach(([x, z, ry = 0], i) => {
+  const n = spots.length, d = new THREE.Object3D();
+  const post = new THREE.InstancedMesh(CYL(0.07, 0.1, 2.3, 6), getMat(C.woodD), n);
+  const base = new THREE.InstancedMesh(CYL(0.26, 0.12, 0.3, 8), getMat('#3a2a1e'), n);
+  const glow = new THREE.InstancedMesh(CYL(0.2, 0.2, 0.06, 8), new THREE.MeshLambertMaterial({ color: '#ffb347', emissive: '#ff8a2a', emissiveIntensity: 2 }), n);
+  const cap = new THREE.InstancedMesh(BOX(0.05, 0.05, 0.05), getMat(C.woodD), n);
+  const flames = [];
+  spots.forEach(([x, z], i) => {
     const y = terrainH(x, z);
-    d.position.set(x, y - 0.05, z); d.rotation.set(0, ry, 0); d.updateMatrix(); lamps.setMatrixAt(i, d.matrix);
+    [[post, y + 1.15, 0], [base, y + 2.4, 0], [glow, y + 2.56, 0], [cap, y + 0.02, 0]].forEach(([m, yy, ry]) => { d.position.set(x, yy, z); d.rotation.set(0, ry, 0); d.updateMatrix(); m.setMatrixAt(i, d.matrix); });
     colliders.push({ x, z, r: 0.25 });
-    flames.push([x + (lx * Math.cos(ry) + lz * Math.sin(ry)) * k, y + fy, z + (-lx * Math.sin(ry) + lz * Math.cos(ry)) * k]);
+    flames.push([x, y + 2.6, z]);
   });
-  torches(scene, flames, uTime, fy - 0.25);
-  lamps.castShadow = false; lamps.receiveShadow = true; lamps.computeBoundingSphere(); scene.add(lamps);
+  torches(scene, flames, uTime);
+  [post, base, glow, cap].forEach((m) => { m.castShadow = m !== glow; m.receiveShadow = true; m.computeBoundingSphere(); scene.add(m); });
 }
 export function distSeg(x, z, a, b) {
   const dx = b[0] - a[0], dz = b[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz)));
