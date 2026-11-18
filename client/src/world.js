@@ -456,11 +456,10 @@ function zoneTheater(B, r, scene) {
   // khon performers on stage
   const cast = [['hanuman', -6], ['thotsakan', -2], ['rama', 2], ['sida', 6]];
   cast.forEach(([role, lz], i) => {
-    const ch = makeKhon(role);
+    const ch = makeKhon(role, { dance: true, phase: i * 0.8 });
     ch.root.position.set(x + 0.5, 1.78, z + lz);
     ch.root.rotation.y = Math.PI / 2;
     ch.root.scale.setScalar(1.9);
-    ch.mixer.update(i * 0.6);
     scene.add(ch.root); cullAt(ch.root, 110);
     animated.push((t, dt) => { if (ch.root.visible) ch.update(dt); });
   });
@@ -959,15 +958,15 @@ function buildLanterns(scene, r) {
   }
   px /= pc; pz /= pc; lx = lx / lc - px; ly = ly / lc - bb.min.y; lz = lz / lc - pz;   // lantern body, relative to the pole's foot
   geo.translate(-px, -bb.min.y, -pz); geo.scale(k, k, k);
-  const mat = part.mat; mat.emissive = new THREE.Color('#ff9a3a'); mat.emissiveMap = mat.map; mat.emissiveIntensity = 0.3;
-  const lamps = new THREE.InstancedMesh(geo, mat, n), flames = [];
+  const mat = part.mat; mat.emissive = new THREE.Color('#ff9a3a'); mat.emissiveMap = mat.map; mat.emissiveIntensity = 0.55;
+  const lamps = new THREE.InstancedMesh(geo, mat, n), flames = [], fy = ly * k - 0.3;   // flame sits inside the lantern; its light pool lands on the ground
   spots.forEach(([x, z, ry = 0], i) => {
     const y = terrainH(x, z);
     d.position.set(x, y - 0.05, z); d.rotation.set(0, ry, 0); d.updateMatrix(); lamps.setMatrixAt(i, d.matrix);
     colliders.push({ x, z, r: 0.25 });
-    flames.push([x + (lx * Math.cos(ry) + lz * Math.sin(ry)) * k, y + ly * k, z + (-lx * Math.sin(ry) + lz * Math.cos(ry)) * k]);
+    flames.push([x + (lx * Math.cos(ry) + lz * Math.sin(ry)) * k, y + fy, z + (-lx * Math.sin(ry) + lz * Math.cos(ry)) * k]);
   });
-  torches(scene, flames, uTime);
+  torches(scene, flames, uTime, fy - 0.25);
   lamps.castShadow = false; lamps.receiveShadow = true; lamps.computeBoundingSphere(); scene.add(lamps);
 }
 export function distSeg(x, z, a, b) {

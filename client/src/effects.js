@@ -95,7 +95,7 @@ export function tiltShiftPasses() {
 }
 
 // Torches (คบเพลิง): flickering billboard flames + warm light pool on the ground. Additive, bloom makes them glow.
-export function torches(scene, spots, uTime) {
+export function torches(scene, spots, uTime, drop = 2.35) {   // drop = height of the flame spot above the ground, so the light pool lands on the floor
   const n = spots.length; if (!n) return;
   const mk = (geo, vs, fs, blending = THREE.AdditiveBlending) => {
     const g = new THREE.InstancedBufferGeometry(); g.index = geo.index; g.attributes.position = geo.attributes.position; g.attributes.uv = geo.attributes.uv;
@@ -123,7 +123,7 @@ export function torches(scene, spots, uTime) {
   mk(pool,
     `uniform float uTime, uNight; attribute vec4 aP; varying vec2 vUv; varying float vF;
      void main(){ vUv = uv; vF = (0.8 + 0.2 * sin(uTime * 13.0 + aP.w * 40.0)) * (1.0 + uNight * 1.3);
-       gl_Position = projectionMatrix * viewMatrix * vec4(position * (1.0 + uNight * 0.6) + vec3(aP.x, aP.y - 2.35, aP.z), 1.0); }`,
+       gl_Position = projectionMatrix * viewMatrix * vec4(position * (1.0 + uNight * 0.6) + vec3(aP.x, aP.y - ${drop.toFixed(2)}, aP.z), 1.0); }`,
     `varying vec2 vUv; varying float vF;
      void main(){ float d = length(vUv - 0.5) * 2.0; float a = pow(max(1.0 - d, 0.0), 2.2) * 0.55 * vF;
        gl_FragColor = vec4(vec3(1.0, 0.62, 0.28) * a, a); }`);

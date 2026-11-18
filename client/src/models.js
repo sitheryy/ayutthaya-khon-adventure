@@ -135,13 +135,44 @@ export function makeCharacter(look) { return new Character(look); }
 
 // Khon performers: user-made rigged models (Mixamo skeleton, Walking/Running clips only). Standing = the Walking clip frozen on
 // its neutral frame, plus a tiny breathing motion, so they cost nothing but the skinning.
-export function makeKhon(role) {
+export function makeKhon(role, opts = {}) {
   const g = cache[KHON_FILES[role]], root = new THREE.Group(), model = SkeletonUtils.clone(g.scene); root.add(model);
   model.traverse((o) => { if (o.isMesh) { const src = o.material; o.material = new THREE.MeshLambertMaterial({ map: src.map, color: src.color }); o.castShadow = o.receiveShadow = true; o.frustumCulled = false; } });
   const mixer = new THREE.AnimationMixer(model), act = mixer.clipAction(g.animations.find((c) => c.name === 'Walking'));
   act.play(); mixer.setTime(0.01); act.paused = true;
   let ph = Math.random() * 6;
-  return { root, mixer, update(dt) { ph += dt * 1.6; model.scale.y = 1 + Math.sin(ph) * 0.006; } };
+  const dance = opts.dance ? khonDance(model, root) : null;
+  return { root, mixer, update(dt) { ph += dt * 1.6; if (dance) dance(dt, opts.phase || 0); else model.scale.y = 1 + Math.sin(ph) * 0.006; } };
+}
+// Khon dance on the stage, driven in code (the models only come with Walking/Running): knees bend and each foot lifts in turn,
+// arms are held out and bent up (ตั้งวง) and swap which one is higher, head tilts. Deltas are in character space (X = its left,
+// Y up, Z = forward) and applied parent-first, so the Mixamo bone axes do not matter.
+function khonDance(model, root) {
+  const bone = (n) => model.getObjectByName('mixamorig' + n);
+  const L = { arm: bone('LeftArm'), fore: bone('LeftForeArm'), up: bone('LeftUpLeg'), leg: bone('LeftLeg') };
+  const R = { arm: bone('RightArm'), fore: bone('RightForeArm'), up: bone('RightUpLeg'), leg: bone('RightLeg') };
+  const spine = bone('Spine'), spine2 = bone('Spine2'), head = bone('Head');
+  const all = [spine, spine2, head, L.arm, L.fore, L.up, L.leg, R.arm, R.fore, R.up, R.leg];
+  if (all.some((b) => !b)) return null;
+  const rest = new Map(all.map((b) => [b, b.quaternion.clone()]));
+  const X = new THREE.Vector3(1, 0, 0), Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3(0, 0, 1), q = new THREE.Quaternion(), pq = new THREE.Quaternion(), rq = new THREE.Quaternion(), ax = new THREE.Vector3();
+  let T = 0;
+  const swing = (b, ...rots) => {   // rots = [axis, angle] pairs, composed in order
+    b.parent.updateWorldMatrix(true, false); b.parent.getWorldQuaternion(pq);
+    q.identity(); for (const [axis, ang] of rots) { ax.copy(axis).applyQuaternion(rq); q.premultiply(new THREE.Quaternion().setFromAxisAngle(ax, ang)); }
+    b.quaternion.copy(pq).invert().multiply(q).multiply(pq.clone().invert().invert()).multiply(rest.get(b));
+  };
+  return (dt, off) => {
+    T += dt; const w = (2 * Math.PI) / 3.2, s = Math.sin(w * T + off), lift = Math.max(0, s), liftR = Math.max(0, -s);
+    model.getWorldQuaternion(rq);
+    model.position.y = 0.025 * Math.sin(2 * w * T + off);
+    swing(spine, [Z, -0.1 * s], [Y, 0.12 * s]); swing(spine2, [Z, -0.06 * s]);
+    swing(L.up, [Z, 0.5 * lift], [X, -0.9 * lift]); swing(L.leg, [X, 0.15 + 1.3 * lift]);
+    swing(R.up, [Z, -0.5 * liftR], [X, -0.9 * liftR]); swing(R.leg, [X, 0.15 + 1.3 * liftR]);
+    swing(L.arm, [Z, 0.95 + 0.3 * s], [X, -0.2]); swing(L.fore, [Z, 0.75 + 0.3 * s]);
+    swing(R.arm, [Z, -(0.95 - 0.3 * s)], [X, -0.2]); swing(R.fore, [Z, -(0.75 - 0.3 * s)]);
+    swing(head, [Z, 0.16 * s]);
+  };
 }
 export const getModel = (name) => cache[name];
 

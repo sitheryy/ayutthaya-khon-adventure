@@ -6,7 +6,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { ZONES, groundHeight } from './world.js';
 import { eleClock } from './elephant.js';
 
-const SCALE = 4.0;                                         // ~27 m of body, head ~7 m up: as big as the old naga
+const SCALE = 5.5;                                         // ~38 m of body, head ~9 m up: bigger than the old naga
 const C = { x: ZONES[3].x + 16, z: ZONES[3].z + 18 }, R = 22;   // circle around the pond (pond r = 13)
 const SPEED = 3.2, LAP = (2 * Math.PI * R) / SPEED, REST = 9, CYCLE = LAP + REST;
 
@@ -26,6 +26,10 @@ export async function spawnNaga(scene, animated) {
   const wy = (b) => b.getWorldPosition(new THREE.Vector3()).y;
   if (wy(bones[0]) > wy(bones[bones.length - 1])) bones.reverse();   // bones[0] = tail ... bones[n-1] = head
   const up = new THREE.Vector3(0, 1, 0), N = bones.length;
+  // which way the snake points: horizontal direction from the middle of the body to the head (a snake's body trails behind its head)
+  const hp = bones[N - 1].getWorldPosition(new THREE.Vector3()), np = new THREE.Vector3();
+  bones.forEach((b) => np.add(b.getWorldPosition(new THREE.Vector3()))); np.divideScalar(N);
+  const face = Math.atan2(hp.z - np.z, hp.x - np.x);
   const ax = bones.map((b) => {   // local axis most aligned with world up, and whether the bone itself runs vertically (neck)
     const q = b.getWorldQuaternion(new THREE.Quaternion()), cand = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
     let best = 0, bd = 0; cand.forEach((v, i) => { const d = v.clone().applyQuaternion(q).dot(up); if (Math.abs(d) > Math.abs(bd)) { bd = d; best = i; } });
@@ -43,7 +47,7 @@ export async function spawnNaga(scene, animated) {
     for (let i = 0; i < N; i++) {
       const a = ax[i]; let ang;
       if (a.vertical) ang = Math.sin(t * 0.9 + i * 0.15) * (i > N - 9 ? 0.07 : 0) * (1 - amp * 0.6);   // neck: slow look left/right, still while moving
-      else ang = Math.sin(phase - i * 0.45) * 0.1 * amp * (0.5 + 0.5 * Math.min(1, i / 6));          // body: travelling wave, tail swings more
+      else ang = Math.sin(phase + i * 0.45) * 0.1 * amp * (0.5 + 0.5 * Math.min(1, i / 6));          // body: travelling wave, tail swings more
       bones[i].quaternion.copy(rest[i]).multiply(tmp.setFromAxisAngle(a.axis, ang * a.sign));
     }
   };
@@ -51,7 +55,7 @@ export async function spawnNaga(scene, animated) {
     const s = ((Date.now() + eleClock.skew) / 1000) % CYCLE, moving = s < LAP, a = (Math.min(s, LAP) / LAP) * Math.PI * 2;
     const x = C.x + Math.cos(a) * R, z = C.z + Math.sin(a) * R;
     root.position.set(x, groundHeight(x, z), z);
-    root.rotation.y = Math.PI / 2 - a;   // the model lies along x with its head toward -x: turn it to head counter-clockwise round the pond
+    root.rotation.y = face - a - Math.PI / 2;   // turn the head to look along the circle (counter-clockwise round the pond)
     pose(dt, moving, t);
   });
 }
