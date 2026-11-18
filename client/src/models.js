@@ -109,12 +109,7 @@ export class Character {
     this.play('Idle');
   }
   action(name) {
-    if (!this.actions[name]) {
-      let c = assets.clips[name]; if (!c) return null;
-      if (name === 'Jump_Idle' && assets.clips.Idle) {   // the jump pose holds the arms straight out: take the arms from Idle so they stay beside the body
-        if (!assets.jumpClip) { const isArm = (t) => /^(upperarm|lowerarm)\./.test(t.name); assets.jumpClip = c.clone(); assets.jumpClip.tracks = c.tracks.filter((t) => !isArm(t)).concat(assets.clips.Idle.tracks.filter(isArm).map((t) => t.clone())); }
-        c = assets.jumpClip;
-      } this.actions[name] = this.mixer.clipAction(c); }
+    if (!this.actions[name]) { const c = assets.clips[name]; if (!c) return null; this.actions[name] = this.mixer.clipAction(c); }
     return this.actions[name];
   }
   play(name, fade = 0.2, once = false) {

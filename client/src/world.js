@@ -919,8 +919,24 @@ function buildRice(scene, r, low) {
 }
 
 // A user-made static model, scaled to height h (m), centred on x,z, feet on `base`.
+// The garuda model holds its arms ~18 degrees away from the body; swing both arms in about their shoulders so they hang beside the torso
+// (the mesh is static, so the vertices are moved once: weight = outside the torso, below the shoulder, in front of the wings).
+const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+function armsIn(root) {
+  root.traverse((m) => {
+    if (!m.isMesh || m.geometry.userData.armsIn) return;
+    const pos = m.geometry.attributes.position, TH = 0.3; m.geometry.userData.armsIn = true;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), ax = Math.abs(x), sg = Math.sign(x);
+      const w = smooth(0.10, 0.16, ax) * smooth(0.17, 0.05, y) * smooth(-0.09, -0.03, z); if (w <= 0) continue;
+      const f = -TH * w, c = Math.cos(f), sn = Math.sin(f), dx = ax - 0.13, dy = y - 0.15;   // rotate about the shoulder in the x-y plane
+      pos.setXY(i, sg * (0.13 + dx * c - dy * sn), 0.15 + dx * sn + dy * c);
+    }
+  });
+}
 function placeBig(scene, { name, x, z, h, base, ry = 0 }) {
   const src = getModel(name); if (!src) return;
+  if (name === 'garuda') armsIn(src.scene);
   const o = src.scene.clone(true); o.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(o), k = h / (box.max.y - box.min.y), c = box.getCenter(new THREE.Vector3());
   o.traverse((m) => { if (m.isMesh) { const t = m.material; m.material = new THREE.MeshLambertMaterial({ map: t.map, color: t.color, side: THREE.DoubleSide }); m.castShadow = m.receiveShadow = true; } });   // thin plates (garuda's cheek ornaments) must show from both sides
