@@ -85,18 +85,6 @@ export class Room {
   all(o, filter = () => true) { const s = JSON.stringify(o); for (const [ws, m] of this.sockets) if (m.role && filter(m)) try { ws.send(s); } catch {} }
   save(p) { const { ws, ...rest } = p; return this.ctx.storage.put('p:' + p.sid, rest); }
 
-  // every ~3 s each student gets the top 5 plus their own place; only sent when something changed
-  sendRanks() {
-    const list = [...this.players.values()].filter((p) => p.online || p.found > 0).sort((a, b) => b.score - a.score || b.found - a.found);
-    const top = list.slice(0, 5).map((p) => [p.name, p.score]), n = list.length, sig = JSON.stringify(top) + n;
-    for (const [ws, m] of this.sockets) {
-      if (m.role !== 'student') continue;
-      const p = this.players.get(m.sid); if (!p) continue;
-      const rank = 1 + list.filter((q) => q.score > p.score).length, key = sig + rank + p.score;
-      if (m.rankKey === key) continue;
-      m.rankKey = key; this.send(ws, { t: 'rank', top, rank, n });
-    }
-  }
   publicPlayer(p) { return [p.sid, p.name, p.no, p.cls, +p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2), +p.ry.toFixed(2), +p.s.toFixed(1), p.a ? 1 : 0, p.online ? 1 : 0, p.score, p.found, p.right, p.wrong, p.e || 0, p.look ?? -1]; }
   broadcastPlayers() {
     if (!this.sockets.size) return;
@@ -105,7 +93,6 @@ export class Room {
     if (t?.on && [...this.sockets.values()].some((s) => s.role === 'teacher')) list.push(['teacher', 'ครู', '', '', +t.x.toFixed(2), +t.y.toFixed(2), +t.z.toFixed(2), +t.ry.toFixed(2), +t.s.toFixed(1), t.a, 1, 0, 0, 0, 0, t.e || 0]);
     this.all({ t: 'players', list });
     this.tickN = (this.tickN || 0) + 1;
-    if (this.tickN % 24 === 0) this.sendRanks();
     if (this.dirtyRoster || this.tickN % 8 === 0) { this.dirtyRoster = false; this.all({ t: 'roster', list: [...this.players.values()].map((p) => this.publicPlayer(p)) }, (m) => m.role === 'teacher'); }
   }
 

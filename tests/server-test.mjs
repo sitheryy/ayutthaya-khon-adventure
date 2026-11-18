@@ -78,15 +78,14 @@ const roster = await T.wait('roster'); assert.ok(roster.list.length >= 2, 'teach
 A.ws.close(); await sleep(300);
 const A2 = await client({ role: 'student', name: 'เด็กหญิง ก', no: '1', cls: 'ม.3/1', sid: 'test-a' }); const w2 = await A2.wait('welcome');
 assert.equal(w2.me.score, lb.rows.find((r) => r.name === 'เด็กหญิง ก').score, 'score restored after reconnect');
-// rank board: top 5 + own place; resume after a drop (same sid, and new device with same name/no/class)
+// resume after a drop (same sid, and new device with same name/no/class)
 {
-  const R = await A2.wait('rank', 6000); assert.ok(R.n >= 2 && R.rank >= 1 && R.top.length >= 1, 'student gets rank');
   A2.send({ t: 'pos', x: 11, y: 0, z: 22, ry: 0, s: 0, a: 0, k: 77 }); await sleep(300);
   A2.ws.close(); await sleep(400);
   const A3 = await client({ role: 'student', name: 'เด็กหญิง ก', no: '1', cls: 'ม.3/1', sid: 'brand-new-device' }); const w3 = await A3.wait('welcome');
   assert.equal(w3.sid, 'test-a', 'same name/no/class resumes the old record');
   assert.equal(w3.me.secs, 77, 'hunting time kept'); assert.equal(w3.me.x, 11, 'position kept'); assert.equal(w3.chests.length, 12, 'chests kept');
-  assert.equal(w3.me.score, w2.me.score, 'score kept'); console.log('resume + rank OK');
+  assert.equal(w3.me.score, w2.me.score, 'score kept'); console.log('resume OK');
 }
 T.send({ t: 'cmd', c: 'lobby' }); await sleep(200);
 console.log('ALL SERVER TESTS PASSED');
