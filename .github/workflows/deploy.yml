@@ -28,16 +28,6 @@ jobs:
         working-directory: client
         env:
           VITE_SERVER: https://ayutthaya-khon.llllove331.workers.dev
-      # Optional preview of the experimental graphics branch at /graphics-preview/ (offline single-player, no server).
-      # continue-on-error: a broken preview must never block the real game.
-      - uses: actions/checkout@v4
-        continue-on-error: true
-        with: { ref: graphics-preview, path: preview-src }
-      - run: npm ci && npx vite build --outDir "$GITHUB_WORKSPACE/client/dist/graphics-preview" --emptyOutDir
-        continue-on-error: true
-        working-directory: preview-src/client
-        env:
-          VITE_SERVER: ''
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with: { path: client/dist }
